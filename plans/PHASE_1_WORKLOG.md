@@ -18,7 +18,7 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 
 ## Steps
 
-- [ ] 1. Split manifest: `configs/data/split.yaml` + pydantic model + tests; add `pyarrow`
+- [x] 1. Split manifest: `configs/data/split.yaml` + pydantic model + tests; add `pyarrow`
 - [ ] 2. Downloader: `src/lase/data/download.py` + `scripts/download_nclt.py` (resumable, SHA-256 recorded in `configs/data/nclt_files.yaml`, selective extraction). Bring-up on 2013-01-10 and one training day; list archive contents.
 - [ ] 3. Full download of all 27 sessions (background), verify checksums, record extracted size
 - [ ] 4. Raw loaders per sensor with schemas and validity flags + synthetic-fixture tests
@@ -38,6 +38,7 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 ## Log
 
 - 2026-11-15: worklog created; overnight run set up (wake-up cron, caffeinate).
+- 2026-11-15 01:21: Step 1 done: split manifest (configs/data/split.yaml), SplitManifest model with disjointness check, tests; pyarrow added.
 
 ## Summary
 
