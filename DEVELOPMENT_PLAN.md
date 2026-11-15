@@ -199,6 +199,8 @@ Existing detail to build on: [research/nclt-sensors-and-state.md](./research/ncl
 
 **Goal:** a correct, consistent, fairly tuned error-state Kalman filter using IMU, FOG, wheels and GPS. Everything later depends on this phase.
 
+**Detailed plan:** [plans/PHASE_3_BASELINE.md](./plans/PHASE_3_BASELINE.md).
+
 **Parts:**
 - Propagation: IMU and FOG fusion, midpoint integration, quaternion update, covariance prediction, Q discretisation.
 - Wheel forward-speed update, including the lever arm.
