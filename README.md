@@ -2,7 +2,7 @@
 
 A physics-based Kalman filter for ground-robot navigation, with a small causal neural network (GRU) that adapts the filter's normally hand-tuned parts to the current situation. The network is trained end to end through the filter.
 
-**Current phase:** Phases 1 (data foundation) and 2 (simulator + evaluation harness) complete ([Phase 1 report](./reports/phase1_audit/README.md), [Phase 2 report](./reports/phase2_eval/README.md)). Phase 3 (analytical baseline) has a **draft plan for discussion** ([review notes](./plans/REVIEW_PHASES.md)). No estimator, trained model or results yet.
+**Current phase:** Phases 1–3 complete, pending review: data foundation, simulator + evaluation harness, and the analytical baseline filter ([reports](./reports/), [review notes](./plans/REVIEW_PHASES.md)). Phase 4 (differentiable training) not started. No learned model yet.
 
 ## In one minute
 
@@ -53,7 +53,7 @@ flowchart LR
     P6 --> P7["7. Final<br/>evaluation"]
 
     classDef done fill:#dcfce7,stroke:#16a34a,color:#1a1a1a
-    class P0,P1,P2 done
+    class P0,P1,P2,P3 done
 ```
 
 Comparator tracks run alongside: reproducing the published NCLT KalmanNet (from Phase 0) and a learned-gain filter on our inputs (from Phase 4). Full plan: [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md).

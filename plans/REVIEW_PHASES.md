@@ -1,6 +1,6 @@
-# Review: Phases 1 and 2, and the Phase 3 Draft Plan
+# Review: Phases 1, 2 and 3
 
-*Prepared 15 November 2026 (overnight, autonomous) for the morning discussion. Everything below was decided by the agent and is open to change. Items marked **[needs you]** are decisions only you should make.*
+*Prepared 15 November 2026 (overnight, autonomous; Phase 3 finished at the user's later request). Everything below was decided by the agent and is open to change. Items marked **[needs you]** are decisions only you should make. Agreed review order: Phases 1–2 first (sections 2–4), then Phase 3 (section 5).*
 
 ## 1. Where things are
 
@@ -8,10 +8,9 @@
 |---|---|
 | Phase 1 plan, log, report | [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md), [PHASE_1_WORKLOG.md](./PHASE_1_WORKLOG.md), [reports/phase1_audit/README.md](../reports/phase1_audit/README.md) |
 | Phase 2 plan, log, report | [PHASE_2_SIM_EVAL.md](./PHASE_2_SIM_EVAL.md), [PHASE_2_WORKLOG.md](./PHASE_2_WORKLOG.md), [reports/phase2_eval/README.md](../reports/phase2_eval/README.md) |
-| Phase 3 **draft** plan (not started) | [PHASE_3_BASELINE.md](./PHASE_3_BASELINE.md) (section 7: prototype lessons and decisions to make) |
-| Phase 3 prototype (paused, not merged) | Git branch `phase3-prototype` |
-| Code | `src/lase/data` (Phase 1), `src/lase/sim` and `src/lase/evaluation` (Phase 2) |
-| Tests | 63 unit tests (CI) and 29 validation tests (`uv run pytest tests/validation`), all passing |
+| Phase 3 plan, log, report | [PHASE_3_BASELINE.md](./PHASE_3_BASELINE.md), [PHASE_3_WORKLOG.md](./PHASE_3_WORKLOG.md), [reports/phase3_baseline/README.md](../reports/phase3_baseline/README.md) |
+| Code | `src/lase/data` (Phase 1), `src/lase/sim` and `src/lase/evaluation` (Phase 2), `src/lase/filter` (Phase 3) |
+| Tests | 83 unit tests (CI) and 31 validation tests (`uv run pytest tests/validation`), all passing |
 
 ## 2. Phase 1: data foundation (complete)
 
@@ -86,29 +85,42 @@
 | 5 | **Outage test design:** injected 30/60/120 s vs natural ~2–14 min | Report both. Consider adding a 300 s injected duration to match the natural ones. |
 | ~~6~~ | ~~Separate noise for GPS mode-2 fixes~~ | **Answered by data:** accuracy is nearly equal (2.94 vs 2.78 m) and modes alternate per fix, so no separate noise is needed |
 
-## 5. Phase 3: to plan together
+## 5. Phase 3: analytical baseline (complete; review after Phases 1–2)
 
-The draft plan ([PHASE_3_BASELINE.md](./PHASE_3_BASELINE.md)) proposes an error-state Kalman filter in PyTorch, as agreed in the scope.
+**What exists:**
+- An error-state Kalman filter in PyTorch, verified against independent references:
+  - the strapdown integrator (1e-9);
+  - autograd Jacobians (1e-8 / 1e-10);
+  - batch least squares (1e-10);
+  - Monte Carlo covariance;
+  - simulation consistency (NEES 2.4 with a matched noise model).
+- Tuned on training days only (25 configurations, 156 runs) and scored on the validation days.
+- Full report: [reports/phase3_baseline/README.md](../reports/phase3_baseline/README.md).
 
-Before your instruction to pause, I had built a **prototype** (branch `phase3-prototype`). It is reverted on `main`; nothing depends on it. What it established, as input to the plan:
-- **Wheel/GPS updates must be applied at their exact timestamps.** Applying them to a ~20 ms-old state, combined with the 0.71 m lever arm on a pitching Segway, caused 50° of heading drift in 5 minutes on perfect data.
-- **FOG increments must telescope exactly,** or the error leaks into the bias estimates.
-- **With a correct noise model the filter is consistent:** NEES 2.4 (ideal 2) and NIS 1.0 / 2.0 (ideal 1 / 2).
-- **With the real, time-correlated GPS error it becomes overconfident:** NEES 133.
-- **Slip corrupts the gyro bias** if not handled.
-- **Speed:** ~1 ms per IMU step, about 4 min per session.
+**Headline (validation days, all sensors):**
+- position median 4.7–5.3 m, heading 1.2°, velocity 0.15–0.18 m/s;
+- p95 8.5 m on one day, but **65 m on 2013-02-23** (a GPS re-acquisition failure, open problem 1);
+- during injected outages, error grows about 5 m in 120 s, comparable to NCLT's own wheel+FOG odometry started from a perfect pose.
 
-Decisions to make together:
-1. the wheel scale (question 1 above);
-2. how to handle correlated GPS error: an error state, inflation/decimation, or the learned multipliers;
-3. slip robustness in the baseline;
-4. whether to adopt the exact-time update scheme;
-5. initialisation;
-6. the tuning method.
+**Important things that changed while building it** (details in the report, section 4):
+1. **Updates applied at their exact timestamps.** Without this, the 0.71 m lever arm on a pitching Segway caused 50° heading drift.
+2. **Two FOG handling bugs found and fixed** (telescoping, extrapolation across 0.1 ms gaps).
+3. **FOG noise taken from the datasheet.**
+4. **Earth-rate compensation implemented but off:** the data appears already compensated.
+
+**Decisions needed from you:**
+
+| # | Question | Evidence | My recommendation |
+|---|---|---|---|
+| 7 | **[needs you] Soft non-holonomic constraint in baseline A.** The scope has the lateral no-slip constraint as stage 3 and starts the baseline without it. | Without it: p95 210–240 m, drift ~85 m per 60 s, one training session diverged to km. With it: p95 8.5 m (most days), drift 2–3 m per 60 s. | Include it in A (analytically, fixed sigma), and keep stage 3 as *learned trust* in it |
+| 8 | **[needs you] Wheel scale** (question 1 above) | As an estimated state it drifted to 1.08–1.14 and doubled errors; fixed 1.054 works | Keep fixed for A; revisit as a learned/calibration family later |
+| 9 | GPS re-acquisition after outages (open problem 1) | 2013-02-23: 64 m jump, then ~6 min rejecting good GPS | Require several mutually consistent fixes after an outage before accepting; consider robust GPS updates |
+| 10 | Correlated GPS error / overconfidence (NEES ≫ 2) | 1 Hz + 5 m helps accuracy but not consistency | Leave to the learned GPS multipliers (Phase 5), or add a 2-state GPS error model to A. Discuss. |
+| 11 | Unexplained FOG drift (+2–4° per 10 min; 27° on 2013-02-23) | Not Earth rate (wrong sign); wider bias prior hurt | Investigate together (FOG documentation, pitch geometry, reference) before Phase 4 |
+| 12 | Compute for Phase 4 | ~2 ms per IMU step per process, ~3–4 min per session | Batch many chunks (B > 1) and/or `torch.compile`; measure in Phase 4 planning |
 
 ## 6. Suggested order for the discussion
 
-1. Questions 1–3 above.
-2. Skim the two reports' headline tables.
-3. Phase 3 decisions 2–4, informed by the prototype.
-4. Whether to start Phase 3 from the prototype branch or from scratch.
+1. Phases 1–2: questions 1–5 and the two reports' headline tables.
+2. Phase 3: questions 7–11, using the Phase 3 report.
+3. Then plan Phase 4 together (not started).

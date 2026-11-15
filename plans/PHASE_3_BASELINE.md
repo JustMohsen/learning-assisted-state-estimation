@@ -1,6 +1,6 @@
 # Phase 3 Plan: Analytical Baseline (Method A)
 
-*Detailed plan for Phase 3 of [DEVELOPMENT_PLAN.md](../DEVELOPMENT_PLAN.md). **Status: IN PROGRESS** (the user asked in the morning of 15 November to finish Phase 3 and review it afterwards). Design choices remain proposals for review. Builds on the Phase 1 data foundation and the Phase 2 simulator and harness. The prototype from branch `phase3-prototype` has been restored onto `main`; its lessons are in section 7.*
+*Detailed plan for Phase 3 of [DEVELOPMENT_PLAN.md](../DEVELOPMENT_PLAN.md). **Status: COMPLETE, pending review** ([report](../reports/phase3_baseline/README.md)). Design choices remain proposals for review. Builds on the Phase 1 data foundation and the Phase 2 simulator and harness. The prototype from branch `phase3-prototype` has been restored onto `main`; its lessons are in section 7.*
 
 ## 1. Goal and exit criterion
 

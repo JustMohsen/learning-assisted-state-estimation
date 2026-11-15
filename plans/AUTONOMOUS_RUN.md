@@ -5,7 +5,7 @@ Instructions for unattended work sessions, started 15 November 2026 (night 2). A
 ## Scope for this run (revised again by the user in the morning)
 
 1. **Phase 2:** complete and hardened.
-2. **Phase 3: resume and finish** from the restored prototype. Continue from the first unchecked step of [PHASE_3_WORKLOG.md](./PHASE_3_WORKLOG.md). The review order afterwards is Phases 1 and 2 first, then Phase 3.
+2. **Phase 3: COMPLETE (~06:30), pending review.** Resumed and finished from the restored prototype. Continue from the first unchecked step of [PHASE_3_WORKLOG.md](./PHASE_3_WORKLOG.md). The review order afterwards is Phases 1 and 2 first, then Phase 3.
 3. **Do not start Phase 4.**
 4. At the end, update [REVIEW_PHASES.md](./REVIEW_PHASES.md) with the Phase 3 results and decisions.
 

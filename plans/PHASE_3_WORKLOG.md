@@ -36,6 +36,7 @@ History:
 - **GPS recovery after 300 s (stage 3):** recovery after 90 s caused both large failures (2012-02-04 p95 95 m, max 113 m; 2012-11-17 max 22 m). With 300 s (or never) no recovery triggers on the tuning sessions and those drop to p95 10 m / max 6.6 m. 300 s keeps a safety net for genuine divergence.
 - **Earth rotation compensated (modelling fix found on the validation days):** in every session the FOG-integrated heading drifted +2 to +4 deg per 10 min against the reference. The KVH FOG senses the Earth rate (Omega sin(42.3 deg) = 4.9e-5 rad/s = 1.7 deg per 10 min on the vertical), five times the datasheet FOG-bias prior, so it could not be absorbed and dragged the heading whenever GPS was weak. The filter now subtracts C_wb^T w_ie from gyro and FOG (with its attitude Jacobian; F still equals autograd to 1e-8). The simulator senses the Earth rate too (SimConfig.earth_rotation, default on), and the validation strapdown has the matching option. Transport rate and Coriolis acceleration (< 1e-4 m/s^2 at Segway speeds) are neglected.
 - **Earth-rate compensation: implemented but OFF by default (reverses the previous entry).** On six training days (not the tuning ones) compensating made heading worse in every session (no GPS: 8.3 vs 6.4 deg RMSE over 20 min; with GPS 1.45 vs 1.28 deg), and on the validation days too. The observed FOG drift against the reference is positive (+2 to +4 deg per 10 min), opposite in sign to an uncompensated Earth rate (-1.7 deg per 10 min), so the released NCLT FOG data appears to be Earth-rate compensated already. The capability stays (FilterConfig.earth_rotation, SimConfig.earth_rotation), default off in both. Open question for the user: confirm from the NCLT/KVH documentation.
+- **FOG-bias prior stays at the datasheet value (1e-5 rad/s):** wider priors (5e-5, 1.5e-4) were worse on training days (heading 1.6/1.8 vs 1.37 deg; outage-end error 3.4/3.8 vs 2.0 m).
 
 ## Steps
 
@@ -48,7 +49,7 @@ History:
 - [x] 7. Optional wheel-scale state (17th error coordinate) and minimum GPS update interval + tests
 - [x] 8. Real-data tooling: `scripts/run_baseline.py` (parallel sessions, injected/natural outages, GPS off), oracle residuals, NIS on real data
 - [x] 9. Tuning on training days (grid search, parallel)
-- [ ] 10. Validation-day evaluation vs baselines; Phase 3 report, summary, review notes
+- [x] 10. Validation-day evaluation vs baselines; Phase 3 report, summary, review notes
 
 ## Questions for the user
 
@@ -66,7 +67,32 @@ History:
 - 2026-11-15 04:38: Step 9 done: tuned configuration written to configs/filter/baseline.yaml (GPS 5 m at 1 Hz, recovery 300 s, wheel 0.15 m/s, acc 0.05, non-holonomic on). 3 stages, 25 configurations, 156 training-segment runs.
 - 2026-11-15 04:53: First validation-day evaluation (before the fix below): 2013-01-10 median 4.7 m / p95 8.5 m / heading 1.2 deg; 2013-02-23 median 5.3 m but p95 65 m, and without GPS heading 27.5 deg (NCLT's own odometry also 27 deg there). Non-holonomic constraint essential (without it median 7-11 m, p95 210-240 m).
 - 2026-11-15 05:34: Remaining FOG drift of ~+3 deg per 10 min (~9e-5 rad/s) looks like a genuine FOG bias, ~10x the datasheet-based prior (1e-5 rad/s), so the filter cannot learn it even with GPS. Testing wider FOG-bias priors (1e-5 / 5e-5 / 1.5e-4) on training days.
+- 2026-11-15 06:00: Step 10 done: validation-day evaluation (scripts/evaluate_baseline.py -> reports/phase3_baseline/validation_*), tuned config on all sim scenarios (scripts/sim_baseline.py), Phase 3 report, REVIEW_PHASES section 5, README status. 2013-02-23 p95 65 m traced to GPS re-acquisition after a natural outage: grown uncertainty let ~67 m-wrong fixes through, then good fixes were rejected until the 300 s recovery.
 
 ## Summary
 
-(written when Phase 3 completes)
+**Phase 3 is complete** (15 November 2026, ~06:30), pending review.
+
+**Built:** `lase.filter` with the following modules:
+- `so3`, `state`, `params`, `learned`, `propagation`, `updates` (wheel, GPS, non-holonomic);
+- `runner` (exact-time event loop);
+- `validation`, `experiment`.
+
+Scripts: `tune_baseline.py`, `evaluate_baseline.py`, `sim_baseline.py`. Tuned configuration: `configs/filter/baseline.yaml`.
+
+**Tests:** 83 unit + 31 validation, all passing.
+
+**Results:** see [reports/phase3_baseline/README.md](../reports/phase3_baseline/README.md).
+- Validation days: median 4.7–5.3 m, heading 1.2°.
+- One re-acquisition failure (p95 65 m on 2013-02-23).
+- Outage drift growth comparable to NCLT odometry.
+
+**Needs the user:** [REVIEW_PHASES.md](./REVIEW_PHASES.md) section 5 (questions 7–12):
+- the non-holonomic constraint in A (scope);
+- wheel scale;
+- GPS re-acquisition;
+- correlated GPS;
+- the FOG drift;
+- compute.
+
+Phase 4 not started.
