@@ -101,3 +101,40 @@ def test_wheel_scale_state_converges() -> None:
     assert res.biases["wheel_scale"][-1] == pytest.approx(1.08, abs=0.003)
     fixed = run_filter(streams, ic, base, params, t_end_us=T0 + 95_000_000)
     assert np.allclose(fixed.biases["wheel_scale"], 1.054)  # zero prior: stays fixed
+
+
+def _gross_after_outage(streams: SensorStreams, offset_m: float) -> SensorStreams:
+    """GPS outage 40-60 s, then a consistent offset for 15 s, then good fixes."""
+    import dataclasses
+
+    from lase.evaluation.outages import withhold_gps
+
+    s = withhold_gps(streams, [(T0 + 40_000_000, T0 + 60_000_000)])
+    ned = s.gnss_ned.copy()
+    bad = (s.gps.t_us >= T0 + 60_000_000) & (s.gps.t_us < T0 + 75_000_000)
+    ned[bad, 0] += offset_m
+    return dataclasses.replace(s, gnss_ned=ned)
+
+
+def _worst_error(clean_circle, reacq: bool, offset_m: float) -> tuple[float, int]:  # type: ignore[no-untyped-def]
+    streams, ref, cal = clean_circle
+    base = FilterConfig()
+    gnss = base.gnss.model_copy(update={"reacq_enabled": reacq, "sigma_m": 5.0})
+    cfg = base.model_copy(update={"gnss": gnss})
+    params = replace(FilterParams.build(cal, cfg), wheel_scale=1.0)
+    ic = initial_condition_from_reference(ref, T0 + 20_000_000)
+    res = run_filter(
+        _gross_after_outage(streams, offset_m), ic, cfg, params, t_end_us=T0 + 95_000_000
+    )
+    e = compute_errors(
+        res.estimate, reference_samples(ref, "dense", t_window=(ic.t_us, T0 + 95_000_000))
+    )
+    return float(np.nanmax(e.pos_err_norm)), res.gnss_reacquisitions
+
+
+def test_gps_reacquisition_rejects_gross_fixes_after_outage(clean_circle) -> None:  # type: ignore[no-untyped-def]
+    worst_rule, n_reacq = _worst_error(clean_circle, True, 18.0)
+    worst_plain, _ = _worst_error(clean_circle, False, 18.0)
+    assert worst_rule < 2.0  # the consistent-but-implausible 18 m offset is never accepted
+    assert n_reacq >= 1  # good GPS is re-acquired after the bad episode
+    assert worst_plain > 3 * worst_rule  # the plain gate lets the offset pull the estimate

@@ -53,6 +53,13 @@ filter:
     recovery_after_s: 300.0          # s of continuous rejection before re-acquisition; 90 s accepted gross episodes [tuned]
     recovery_min_rejections: 5       # consecutive rejected fixes also required before re-acquisition [design]
     recovery_pos_sigma_m: 30.0       # m position sigma set at re-acquisition [design]
+    reacq_enabled: true              # after a GPS gap, accept GPS only once several consistent, plausible fixes agree (user decision) [design]
+    reacq_trigger_s: 5.0             # s without an accepted fix that starts re-acquisition (= natural-outage threshold) [design]
+    reacq_min_fixes: 5               # consecutive gated fixes required before trusting GPS again [design; tune R7]
+    reacq_window_s: 10.0             # s; those fixes must lie within this window (with 1 Hz updates: ~5 s) [design]
+    reacq_consistency_m: 5.0         # m; max deviation of each candidate innovation from their mean [design; tune R7]
+    reacq_max_offset_m: 10.0         # m; allowed mean innovation right after a gap [design]
+    reacq_offset_growth_mps: 0.1     # m/s; allowed mean innovation grows with gap length; observed drift ~0.04 m/s median (5 m per 2 min), p90 ~0.1 [measured; tune R7]
 
   fog_handling:                      # causal FOG angle at propagation-interval boundaries
     max_extrapolation_s: 0.05        # s; if the last FOG sample is older, the interval uses the IMU gyro only [design]

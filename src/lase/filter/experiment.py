@@ -104,6 +104,7 @@ def run_session(
             row[f"{name}_nis_median"] = float(np.median(log["nis"]))
             row[f"{name}_accept"] = float(log["accepted"].mean())
     row["gnss_recoveries"] = res.gnss_recoveries
+    row["gnss_reacquisitions"] = res.gnss_reacquisitions
     row["final_wheel_scale"] = (
         float(res.biases["wheel_scale"][-1]) if len(res.biases["wheel_scale"]) else np.nan
     )

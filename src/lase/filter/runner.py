@@ -30,7 +30,7 @@ from lase.filter.params import FilterConfig, FilterParams
 from lase.filter.propagation import ImuInterval, PropagationDiagnostics, propagate
 from lase.filter.so3 import matrix_to_quat, skew, yaw_of
 from lase.filter.state import BA, BF, BG, N_ERR, P_, TH, V_, NavState
-from lase.filter.updates import update_gnss, update_nonholonomic, update_wheel
+from lase.filter.updates import gate_threshold, update_gnss, update_nonholonomic, update_wheel
 from lase.geometry.euler import euler_zyx_to_matrix
 
 D = torch.float64
@@ -89,6 +89,7 @@ class RunResult:
     n_imu_steps: int
     wall_time_s: float
     gnss_recoveries: int
+    gnss_reacquisitions: int = 0
 
 
 LearnedFn = Callable[[int, SensorId], HeadOutputs]
@@ -214,6 +215,8 @@ def run_filter(
     last_gnss_queued = -(10**18)
     gnss_rejects = 0
     recoveries = 0
+    reacquisitions = 0
+    reacq: list[tuple[int, np.ndarray]] = []  # candidate fixes during GPS re-acquisition
     n_steps = 0
     l_imu = params.l_imu
     Cb = params.C_b_imu
@@ -224,7 +227,7 @@ def run_filter(
     def apply_update(
         st: NavState, Pm: Tensor, t: int, sensor: int, row: int, omega: Tensor
     ) -> tuple[NavState, Tensor]:
-        nonlocal last_gnss_accept, gnss_rejects, recoveries
+        nonlocal last_gnss_accept, gnss_rejects, recoveries, reacquisitions
         if sensor == SensorId.WHEEL:
             st, Pm, ud = update_wheel(
                 st,
@@ -248,7 +251,32 @@ def run_filter(
             log = wheel_log
         else:
             z = torch.as_tensor(streams.gnss_ned[row, :2], dtype=D)[None]
-            st, Pm, ud = update_gnss(st, Pm, z, params, cfg.gnss, learned(t, SensorId.GNSS))
+            g = cfg.gnss
+            gap_us = t - last_gnss_accept
+            if g.reacq_enabled and gap_us > g.reacq_trigger_s * 1e6:
+                # Re-acquisition after a gap: evaluate without applying; accept only once
+                # N consecutive gated fixes agree with each other and are plausible for the gap.
+                _, _, ud = update_gnss(
+                    st, Pm, z, params, g, learned(t, SensorId.GNSS), apply=torch.tensor([False])
+                )
+                if float(ud.nis[0]) <= gate_threshold(g.gate_prob, 2):
+                    reacq.append((t, ud.innovation[0].numpy()))
+                else:
+                    reacq.clear()
+                reacq[:] = [(tt, r) for tt, r in reacq if t - tt <= g.reacq_window_s * 1e6]
+                if len(reacq) >= g.reacq_min_fixes:
+                    inn = np.array([r for _, r in reacq])
+                    spread = float(np.max(np.linalg.norm(inn - inn.mean(0), axis=1)))
+                    allowed = g.reacq_max_offset_m + g.reacq_offset_growth_mps * gap_us * 1e-6
+                    if (
+                        spread <= g.reacq_consistency_m
+                        and float(np.linalg.norm(inn.mean(0))) <= allowed
+                    ):
+                        st, Pm, ud = update_gnss(st, Pm, z, params, g, learned(t, SensorId.GNSS))
+                        reacq.clear()
+                        reacquisitions += 1
+            else:
+                st, Pm, ud = update_gnss(st, Pm, z, params, g, learned(t, SensorId.GNSS))
             if bool(ud.accepted[0]):
                 last_gnss_accept, gnss_rejects = t, 0
             else:
@@ -393,6 +421,7 @@ def run_filter(
         n_imu_steps=n_steps,
         wall_time_s=time.perf_counter() - t_start,
         gnss_recoveries=recoveries,
+        gnss_reacquisitions=reacquisitions,
     )
 
 

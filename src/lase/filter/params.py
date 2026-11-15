@@ -73,6 +73,13 @@ class GnssUpdateConfig(Config):
     recovery_after_s: float = 90.0  # inflate position covariance after this long of rejections (> most gross GPS episodes)
     recovery_pos_sigma_m: float = 30.0
     recovery_min_rejections: int = 5  # consecutive rejections required before recovery
+    reacq_enabled: bool = True
+    reacq_trigger_s: float = 5.0  # gap without accepted GPS that starts re-acquisition
+    reacq_min_fixes: int = 5  # consecutive gated fixes required
+    reacq_window_s: float = 10.0  # the fixes must lie within this window
+    reacq_consistency_m: float = 5.0  # max deviation of each innovation from their mean
+    reacq_max_offset_m: float = 10.0  # allowed mean innovation at a zero-length gap
+    reacq_offset_growth_mps: float = 0.1  # plus this per second of gap (dead-reckoning drift)
     min_interval_s: float = 0.0  # skip fixes closer than this to the previous GPS update
 
 
