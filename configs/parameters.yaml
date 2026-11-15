@@ -35,6 +35,7 @@ filter:
     sigma_mps: 0.15                  # m/s measurement noise of the mean wheel speed [tuned]
     speed_scale: null                # released speed / true speed; null = calibration value (1.054) [measured]
     gate_prob: 0.999                 # chi-square acceptance probability for gating [design]
+    encoder_pitch_coef_m: 0.24       # m; encoders sense wheel rotation relative to the chassis: reported speed += R_w * pitch rate; data 0.17-0.24 m ~ wheel radius [measured; retune R7]
 
   nonholonomic:                      # soft pseudo-measurement: axle does not slide sideways/vertically
     enabled: true                    # on in baseline A (user decision, Phase 3 review)

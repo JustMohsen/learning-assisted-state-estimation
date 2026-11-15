@@ -74,12 +74,33 @@ def kalman_update(
     return state.inject(dx), P_new, UpdateDiagnostics(r, S, nis, ok)
 
 
+def axle_velocity_world(state: NavState, omega_b: Tensor, params: FilterParams) -> Tensor:
+    """World-frame velocity of the axle centre (B, 3): v_IMU - C (omega x l_imu)."""
+    lever = torch.linalg.cross(omega_b, params.l_imu.expand_as(omega_b))
+    out: Tensor = state.v_w - (state.C_wb @ lever[..., None])[..., 0]
+    return out
+
+
+def rolling_direction(C: Tensor) -> tuple[Tensor, Tensor]:
+    """Horizontal unit direction (B, 3) perpendicular to the axle, and the norm used.
+
+    ``f = normalize(axle_w x down)`` with ``axle_w = C e_y``. For a level body this is body x.
+    It depends on attitude (well observed via gravity), not on the vertical velocity estimate,
+    and is independent of body pitch. Assumes locally level ground (campus slopes of a few
+    percent change the rolling speed by < 0.1%).
+    """
+    axle = C[:, :, 1]
+    down = torch.tensor([0.0, 0.0, 1.0], dtype=C.dtype).expand_as(axle)
+    n = torch.linalg.cross(axle, down)
+    norm = n.norm(dim=-1, keepdim=True)
+    return n / norm, norm
+
+
 def wheel_prediction(state: NavState, omega_b: Tensor, params: FilterParams) -> Tensor:
-    """Forward speed of the axle centre (B,) before the wheel scale is applied."""
-    C = state.C_wb
-    v_b = (C.transpose(-1, -2) @ state.v_w[..., None])[..., 0]
-    v_axle: Tensor = v_b - torch.linalg.cross(omega_b, params.l_imu.expand_as(omega_b))
-    return v_axle[:, 0]
+    """Rolling speed of the axle centre (B,), before wheel scale and encoder pitch-rate term."""
+    f, _ = rolling_direction(state.C_wb)
+    out: Tensor = (f * axle_velocity_world(state, omega_b, params)).sum(-1)
+    return out
 
 
 def update_wheel(
@@ -100,15 +121,26 @@ def update_wheel(
     """
     s = state.wheel_scale[:, 0]
     z = 0.5 * (left + right)
-    v_fwd = wheel_prediction(state, omega_b, params)
-    h = s * v_fwd + learned.wheel_residual[:, 0]
     C = state.C_wb
-    v_b = (C.transpose(-1, -2) @ state.v_w[..., None])[..., 0]
+    f, norm = rolling_direction(C)
+    u = axle_velocity_world(state, omega_b, params)
+    v_roll = (f * u).sum(-1)
+    # Encoders measure wheel rotation relative to the chassis: w_enc = V/R + w_pitch, so the
+    # reported speed contains R * q (q = body pitch rate, gyro y; Phase 3 review).
+    h = s * v_roll + cfg.encoder_pitch_coef_m * omega_b[:, 1] + learned.wheel_residual[:, 0]
     B = P.shape[0]
+    eye3 = torch.eye(3, dtype=P.dtype).expand(B, 3, 3)
+    e_y = torch.tensor([0.0, 1.0, 0.0], dtype=P.dtype).expand(B, 3)
+    down = torch.tensor([0.0, 0.0, 1.0], dtype=P.dtype).expand(B, 3)
+    lever = torch.linalg.cross(omega_b, params.l_imu.expand_as(omega_b))
+    # d f / d theta: n = (C e_y) x d, dn = [d]x C [e_y]x dtheta, df = (I - f f^T)/|n| dn
+    proj = (eye3 - f[..., None] * f[..., None, :]) / norm[..., None]
+    df_dth = proj @ skew(down) @ C @ skew(e_y)
+    du_dth = C @ skew(lever)  # u = v - C (omega x l): du = C [omega x l]x dtheta
     H = torch.zeros(B, 1, N_ERR, dtype=P.dtype)
-    H[:, 0, V_] = s[:, None] * C[:, :, 0]  # e_x^T C^T
-    H[:, 0, TH] = s[:, None] * skew(v_b)[:, 0, :]  # e_x^T [C^T v]x
-    H[:, 0, WS] = v_fwd
+    H[:, 0, V_] = s[:, None] * f
+    H[:, 0, TH] = s[:, None] * ((u[:, None, :] @ df_dth)[:, 0] + (f[:, None, :] @ du_dth)[:, 0])
+    H[:, 0, WS] = v_roll
     R = (cfg.sigma_mps**2 * learned.wheel_var_mult[:, 0])[:, None, None]
     return kalman_update(state, P, (z - h)[:, None], H, R, gate_threshold(cfg.gate_prob, 1), apply)
 

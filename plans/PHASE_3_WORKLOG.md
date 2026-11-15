@@ -39,6 +39,7 @@ History:
 - **FOG-bias prior stays at the datasheet value (1e-5 rad/s):** wider priors (5e-5, 1.5e-4) were worse on training days (heading 1.6/1.8 vs 1.37 deg; outage-end error 3.4/3.8 vs 2.0 m).
 - **Parameters file (R0, user request):** configs/parameters.yaml holds every tunable value of the estimator, data handling and evaluation, each commented (what, units, source: tuned/datasheet/measured/design), loaded by lase.parameters.load_parameters with experiment overrides from configs/experiments/ (deep merge; unknown keys rejected). Former hard-coded values moved in: GPS recovery rejection count, FOG extrapolation limit/baseline, start-up offset, evaluation staleness, dense rate, RPE intervals, outage planning and curve settings, reference node tolerance and velocity window. configs/filter/baseline.yaml removed (its values are in parameters.yaml). tests/unit/test_parameters.py enforces completeness and comments; CONVENTIONS rule added. Analysis-only thresholds in one-off Phase 1/2 diagnostics remain documented keyword arguments.
 - **Non-holonomic constraint in baseline A, lateral only (user decision; R1):** lateral = along the axle, pitch-independent. The vertical term (body-z velocity ~ 0) is wrong under pitch (v sin(pitch), ~0.07 m/s typical) and is now optional, off by default. New learned output nhc_var_mult (CONVENTIONS 6.3): B learns the constraint's noise as a constant, C learns its trust; lateral skids are handled like forward slip (scope stage 3 rewritten accordingly).
+- **Wheel model (R2, user's encoder model):** reported speed = s * V_roll + R_w * q, with q = body pitch rate (gyro y) and R_w = wheel.encoder_pitch_coef_m (0.24 m default: data 0.17-0.24 m, about the wheel radius; to be retuned). V_roll = f . v_axle with f = normalize(axle_w x down): the horizontal direction perpendicular to the axle, from attitude. A first version using the signed norm of the axle velocity in the body x-z plane was rejected: it made the wheel prediction depend on the poorly observed vertical velocity (no barometer, horizontal GPS) and biased the wheel-scale estimate (1.074 vs 1.08 true in a test). Analytic Jacobian checked against autograd (1e-10).
 
 ## Steps
 
@@ -57,7 +58,7 @@ History:
 
 - [x] R0. Single commented parameters file (`configs/parameters.yaml`) for every tunable value; move existing magic numbers into it; CONVENTIONS rule "every decided value is a named, commented parameter"
 - [x] R1. Non-holonomic constraint in A, **lateral only**; scope/plan updated: B learns its noise, C learns its trust, lateral slip handled like forward slip
-- [ ] R2. Wheel model: encoder senses wheel rotation relative to the chassis, `reported speed = s * V_axle,perp + R_w * q_gyro_y` (R_w a parameter, ~0.2 m measured); pitch-independent axle speed; vertical constraint dropped or loosened
+- [x] R2. Wheel model: encoder senses wheel rotation relative to the chassis, `reported speed = s * V_axle,perp + R_w * q_gyro_y` (R_w a parameter, ~0.2 m measured); pitch-independent axle speed; vertical constraint dropped or loosened
 - [ ] R3. GPS re-acquisition: require N mutually consistent fixes after an outage (parameters)
 - [ ] R4. GPS error states (2-D Gauss-Markov, fitted values) for correlated GPS error
 - [ ] R5. FOG investigation (warm-up, season, pitch/roll correlation, KVH documentation), then a fitted FOG bias model
@@ -83,6 +84,7 @@ History:
 - 2026-11-15 06:00: Step 10 done: validation-day evaluation (scripts/evaluate_baseline.py -> reports/phase3_baseline/validation_*), tuned config on all sim scenarios (scripts/sim_baseline.py), Phase 3 report, REVIEW_PHASES section 5, README status. 2013-02-23 p95 65 m traced to GPS re-acquisition after a natural outage: grown uncertainty let ~67 m-wrong fixes through, then good fixes were rejected until the 300 s recovery.
 - 2026-11-15 15:04: R0 done: configs/parameters.yaml, lase/parameters.py, configs/experiments/ (README, no_nhc.yaml), wiring through runner, experiment, evaluation and data loading; 88 unit tests pass.
 - 2026-11-15 15:06: R1 done: lateral-only constraint (vertical optional), nhc_var_mult in HeadOutputs, scope / development plan / conventions / review notes updated; 89 unit tests pass.
+- 2026-11-15 15:11: R2 done: pitch-independent rolling speed, encoder pitch-rate term, vertical constraint off by default (R1); 90 unit tests pass.
 
 ## Summary
 

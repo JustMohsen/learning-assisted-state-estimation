@@ -46,6 +46,7 @@ class WheelUpdateConfig(Config):
     sigma_mps: float = 0.1
     speed_scale: float | None = None  # None: use the calibration estimate
     gate_prob: float = 0.999
+    encoder_pitch_coef_m: float = 0.0  # R_w: reported speed includes R_w * body pitch rate
 
 
 class NonholonomicConfig(Config):

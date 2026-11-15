@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import torch
 
 from lase.data.calibration import load_calibration
@@ -38,19 +39,71 @@ def _H_numeric(fun, x0: NavState) -> torch.Tensor:  # type: ignore[no-untyped-de
 
 
 def test_wheel_jacobian_matches_autograd() -> None:
-    params = FilterParams.build(load_calibration(), FilterConfig())
-    x0 = _state()
-    omega = torch.tensor([[0.05, -0.02, 0.3]], dtype=D)
-    J = _H_numeric(lambda x: params.wheel_scale * wheel_prediction(x, omega, params)[:, None], x0)
-    # Recover H by an update with tiny P and a known innovation: use the function directly instead
-    C = x0.C_wb
-    v_b = (C.transpose(-1, -2) @ x0.v_w[..., None])[..., 0]
-    from lase.filter.so3 import skew
+    from lase.filter.so3 import so3_exp
+    from lase.filter.updates import update_wheel, wheel_prediction
 
-    H = torch.zeros(1, N_ERR, dtype=D)
-    H[0, 3:6] = params.wheel_scale * C[0, :, 0]
-    H[0, 6:9] = params.wheel_scale * skew(v_b)[0, 0, :]
-    np.testing.assert_allclose(H.numpy(), J.numpy(), atol=1e-10)
+    cfg = FilterConfig()
+    params = FilterParams.build(load_calibration(), cfg)
+    x0 = _state()
+    x0 = NavState(
+        x0.p_w,
+        x0.v_w,
+        matrix_to_quat(so3_exp(torch.tensor([[0.1, 0.25, 0.9]], dtype=D))),
+        x0.b_acc,
+        x0.b_gyr,
+        x0.b_fog,
+        x0.wheel_scale,
+    )
+    omega = torch.tensor([[0.05, -0.2, 0.3]], dtype=D)
+    J = _H_numeric(
+        lambda x: (x.wheel_scale[:, 0] * wheel_prediction(x, omega, params))[:, None], x0
+    )
+    # recover the analytic H from a scalar update: K = P H^T S^-1 with P = I -> H = K * S
+    P = torch.eye(N_ERR, dtype=D)[None]
+    z = torch.zeros(1, dtype=D)
+    update_wheel(
+        x0, P, z, z, omega, params, cfg.wheel, HeadOutputs.neutral(1)
+    )  # runs with this state
+    from lase.filter.so3 import skew
+    from lase.filter.updates import axle_velocity_world, rolling_direction
+
+    C = x0.C_wb
+    f, norm = rolling_direction(C)
+    u = axle_velocity_world(x0, omega, params)
+    s = x0.wheel_scale[:, 0]
+    eye3 = torch.eye(3, dtype=D)[None]
+    e_y = torch.tensor([[0.0, 1.0, 0.0]], dtype=D)
+    down = torch.tensor([[0.0, 0.0, 1.0]], dtype=D)
+    lever = torch.linalg.cross(omega, params.l_imu[None])
+    proj = (eye3 - f[..., None] * f[..., None, :]) / norm[..., None]
+    H = torch.zeros(N_ERR, dtype=D)
+    H[3:6] = s * f[0]
+    H[6:9] = s * (
+        (u[:, None, :] @ (proj @ skew(down) @ C @ skew(e_y)))[0, 0]
+        + (f[:, None, :] @ (C @ skew(lever)))[0, 0]
+    )
+    H[16] = (f * u).sum()
+    np.testing.assert_allclose(H.numpy(), J[0].numpy(), atol=1e-10)
+
+
+def test_rolling_speed_is_pitch_independent() -> None:
+    from lase.filter.so3 import so3_exp
+    from lase.filter.updates import wheel_prediction
+
+    params = FilterParams.build(load_calibration(), FilterConfig())
+    omega = torch.zeros(1, 3, dtype=D)
+    for pitch in (0.0, 0.1, -0.2):  # axle moving horizontally north at 1.4 m/s, body pitched
+        C = so3_exp(torch.tensor([[0.0, pitch, 0.0]], dtype=D))
+        x = NavState(
+            torch.zeros(1, 3, dtype=D),
+            torch.tensor([[1.4, 0.0, 0.0]], dtype=D),
+            matrix_to_quat(C),
+            torch.zeros(1, 3, dtype=D),
+            torch.zeros(1, 3, dtype=D),
+            torch.zeros(1, 1, dtype=D),
+            torch.ones(1, 1, dtype=D),
+        )
+        assert float(wheel_prediction(x, omega, params)[0]) == pytest.approx(1.4, abs=1e-12)
 
 
 def test_gnss_jacobian_matches_autograd() -> None:
