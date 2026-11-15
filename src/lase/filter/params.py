@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -45,7 +46,13 @@ class WheelUpdateConfig(Config):
 
     enabled: bool = True
     sigma_mps: float = 0.1
-    speed_scale: float | None = None  # None: use the calibration estimate
+    speed_scale: float | None = None  # None: date trend if enabled, else the calibration value
+    # Fixed scale from a linear trend in date fitted on training days (tyre wear/pressure):
+    # scale = intercept + per_year * (date - ref_date) / 365.25 (user decision, Phase 3 review)
+    scale_trend_enabled: bool = False
+    scale_trend_ref_date: dt.date = dt.date(2012, 1, 1)
+    scale_trend_intercept: float = 1.054
+    scale_trend_per_year: float = 0.0
     gate_prob: float = 0.999
     encoder_pitch_coef_m: float = 0.0  # R_w: reported speed includes R_w * body pitch rate
 
@@ -137,6 +144,18 @@ class FilterConfig(Config):
     # the per-session FOG/gyro offsets are left to the bias states (user decision, Phase 3 review).
     earth_rotation: bool = True
     output_every: int = 1  # emit an estimate every n-th propagation step
+
+    def for_date(self, date: dt.date) -> FilterConfig:
+        """This configuration with the wheel speed scale resolved for ``date``.
+
+        An explicit ``wheel.speed_scale`` wins; otherwise the date trend, if enabled.
+        """
+        w = self.wheel
+        if w.speed_scale is not None or not w.scale_trend_enabled:
+            return self
+        years = (date - w.scale_trend_ref_date).days / 365.25
+        scale = w.scale_trend_intercept + w.scale_trend_per_year * years
+        return self.model_copy(update={"wheel": w.model_copy(update={"speed_scale": scale})})
 
 
 def load_filter_config(name_or_path: str | Path = "baseline") -> FilterConfig:

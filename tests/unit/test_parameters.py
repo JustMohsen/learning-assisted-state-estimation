@@ -73,3 +73,21 @@ def test_unknown_override_key_rejected(tmp_path: Path) -> None:
     ov.write_text("filter:\n  gnss:\n    sigma_mm: 9.0\n")
     with pytest.raises(Exception, match="sigma_mm"):
         load_parameters(overrides=[ov])
+
+
+def test_wheel_scale_date_trend() -> None:
+    import datetime as dt
+
+    from lase.filter.params import FilterConfig, WheelUpdateConfig
+
+    w = WheelUpdateConfig(
+        scale_trend_enabled=True, scale_trend_intercept=1.04, scale_trend_per_year=0.0365
+    )
+    cfg = FilterConfig(wheel=w)
+    assert cfg.for_date(dt.date(2013, 1, 1)).wheel.speed_scale == pytest.approx(
+        1.04 + 0.0365 * 366 / 365.25
+    )
+    fixed = FilterConfig(wheel=w.model_copy(update={"speed_scale": 1.1}))
+    assert fixed.for_date(dt.date(2013, 1, 1)).wheel.speed_scale == 1.1  # explicit value wins
+    off = FilterConfig()
+    assert off.for_date(dt.date(2013, 1, 1)) is off

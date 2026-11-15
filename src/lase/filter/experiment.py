@@ -41,6 +41,7 @@ def run_session(
     """
     P = params or load_parameters()
     ev, op = P.evaluation, P.evaluation.outages
+    cfg = cfg.for_date(date)
     cal = load_calibration()
     streams = load_inputs(date, cal, P.data.limits)
     ref = load_reference_for(date, P.data.node_match_tolerance_s)
@@ -123,7 +124,8 @@ def run_chain(
 ) -> list[dict[str, Any]]:
     """Run sessions in date order, carrying the wheel-scale estimate (``cfg.wheel_scale_chain``).
 
-    If ``out_csv`` is given, each session's row is appended as soon as it finishes, so a
+    If ``out_csv`` is given, the file is rewritten with all completed rows after each
+    session (one file per chain; rows may differ in columns, e.g. natural-outage keys), so a
     crash never loses completed sessions.
     """
     import pandas as pd
@@ -149,9 +151,7 @@ def run_chain(
         row["variant"] = tag
         rows.append(row)
         if out_csv is not None:
-            pd.DataFrame([row]).to_csv(
-                out_csv, mode="a", header=not os.path.exists(out_csv), index=False
-            )
+            pd.DataFrame(rows).to_csv(out_csv, index=False)
         value, sigma, prev = row["final_wheel_scale"], row["final_wheel_scale_sigma"], d
     return rows
 

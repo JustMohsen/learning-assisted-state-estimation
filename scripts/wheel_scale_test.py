@@ -49,14 +49,23 @@ def main() -> int:
     with ProcessPoolExecutor(len(variants)) as ex:
         futs = {
             name: ex.submit(
-                _chain_worker, (dates, cfg, "outages", minutes, params, str(partial), name)
+                _chain_worker,
+                (
+                    dates,
+                    cfg,
+                    "outages",
+                    minutes,
+                    params,
+                    str(partial.with_suffix(f".{name}.csv")),
+                    name,
+                ),
             )
             for name, cfg in variants.items()
         }
         fixed = run_many([(d, base, "outages", minutes) for d in dates], workers=4, params=params)
         for r in fixed:
             rows.append({"variant": "fixed_1.054", **r})
-        pd.DataFrame(rows).to_csv(partial, mode="a", header=not partial.exists(), index=False)
+        pd.DataFrame(rows).to_csv(partial.with_suffix(".fixed.csv"), index=False)
         for f in futs.values():
             rows.extend(f.result())
     df = pd.DataFrame(rows)

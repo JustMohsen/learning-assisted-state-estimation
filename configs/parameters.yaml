@@ -28,12 +28,16 @@ filter:
     acc_bias_mps2: 0.1               # m/s^2 initial accelerometer bias
     gyr_bias_radps: 0.01             # rad/s initial gyro bias
     fog_bias_radps: 1.0e-4           # rad/s initial FOG bias: KVH turn-on offset +-20 deg/h, measured -25..+28 deg/h per session (R5); old 1e-5 tied on score but cannot absorb the offset [datasheet, R7a]
-    wheel_scale: 0.0                 # initial wheel-scale sigma; 0 = fixed at wheel.speed_scale [design; R6]
+    wheel_scale: 0.0                 # initial wheel-scale sigma; 0 = fixed at wheel.speed_scale; estimating it online absorbed other errors (R6: 2-4% off, worse position) [tested, R6]
 
   wheel:                             # forward wheel-speed update
     enabled: true                    # use wheel speeds
     sigma_mps: 0.15                  # m/s measurement noise of the mean wheel speed [tuned]
-    speed_scale: null                # released speed / true speed; null = calibration value (1.054) [measured]
+    speed_scale: null                # released speed / true speed; null = date trend below (or calibration value 1.054 if the trend is off) [measured]
+    scale_trend_enabled: true        # fixed per-session scale from a linear trend in date; online estimation absorbed other errors (R6) (user decision) [design]
+    scale_trend_ref_date: 2012-01-01 # date where the trend equals the intercept [design]
+    scale_trend_intercept: 1.04409   # scale at the reference date; scripts/fit_wheel_scale_trend.py, 22 training days, residual std 0.0044 [measured]
+    scale_trend_per_year: 0.03268    # scale increase per year (tyre wear/pressure); validation days within 0.4% [measured]
     gate_prob: 0.999                 # chi-square acceptance probability for gating [design]
     encoder_pitch_coef_m: 0.24       # m; encoders sense wheel rotation relative to the chassis: reported speed += R_w * pitch rate; data 0.17-0.24 m ~ wheel radius; 2x2 test: velocity error -15%, drift -12% [measured, kept]
 
