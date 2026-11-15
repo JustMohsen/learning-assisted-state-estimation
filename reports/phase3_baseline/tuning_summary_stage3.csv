@@ -1,0 +1,4 @@
+config,nodes_pos_median_m,nodes_pos_p95_m,nodes_heading_rmse_deg,dense_vel_rmse_mps,inj_outage_final_med_m,wheel_nis_mean,gnss_nis_mean,score
+s3_recovery1e+09,3.138,5.6594,1.3607,0.17823,3.1592,0.5462,1.4977,3
+s3_recovery300,3.138,5.6594,1.3607,0.17823,3.1592,0.5462,1.4977,3
+s3_recovery90,3.138,5.6594,1.3607,0.17826,3.1592,0.5462,1.4977,3
