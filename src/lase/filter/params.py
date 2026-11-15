@@ -69,7 +69,7 @@ class GnssUpdateConfig(Config):
     sigma_m: float = 3.0
     gate_prob: float = 0.999
     skip_held: bool = True
-    recovery_after_s: float = 30.0  # inflate position covariance after this long of rejections
+    recovery_after_s: float = 90.0  # inflate position covariance after this long of rejections (> most gross GPS episodes)
     recovery_pos_sigma_m: float = 30.0
     min_interval_s: float = 0.0  # skip fixes closer than this to the previous GPS update
 

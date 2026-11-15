@@ -28,7 +28,8 @@ def run_session(
     mode: Mode = "gps",
     max_minutes: float | None = None,
     start_offset_min: float = 0.0,
-) -> dict[str, Any]:
+    return_details: bool = False,
+) -> Any:
     """Run and evaluate one session.
 
     Modes: ``gps`` (all sensors), ``outages`` (GPS withheld in the seeded injected windows),
@@ -81,10 +82,12 @@ def run_session(
     row["minutes"] = (t_end - ic.t_us) / 60e6
     row["wall_s"] = res.wall_time_s
     row["us_per_step"] = 1e6 * res.wall_time_s / max(res.n_imu_steps, 1)
+    if return_details:
+        return row, rep, res.estimate, spans, natural
     return row
 
 
-def _worker(args: tuple[dt.date, FilterConfig, Mode, float | None, float]) -> dict[str, Any]:
+def _worker(args: tuple[Any, ...]) -> Any:
     import torch
 
     torch.set_num_threads(1)
@@ -92,9 +95,9 @@ def _worker(args: tuple[dt.date, FilterConfig, Mode, float | None, float]) -> di
 
 
 def run_many(
-    jobs: Sequence[tuple[dt.date, FilterConfig, Mode, float | None, float]],
+    jobs: Sequence[tuple[Any, ...]],
     workers: int | None = None,
-) -> list[dict[str, Any]]:
+) -> list[Any]:
     """Run jobs in parallel processes (one thread each); results in job order."""
     n = workers or max(1, (os.cpu_count() or 2) - 2)
     with ProcessPoolExecutor(max_workers=n) as ex:
