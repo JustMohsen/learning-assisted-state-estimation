@@ -27,6 +27,7 @@ from lase.evaluation.estimate import reference_samples
 from lase.evaluation.metrics import compute_errors, relative_pose_error, summarize
 from lase.evaluation.outages import OutageCurves, outage_curves, plan_outages, withhold_gps
 from lase.evaluation.plots import plot_errors_vs_time, plot_outage_growth, plot_trajectories
+from lase.evaluation.report import natural_outage_spans
 from lase.utils.paths import repo_root
 
 
@@ -38,6 +39,7 @@ def main() -> int:
     rows = []
     pooled: dict[str, list] = {}
     curves: dict[str, list[OutageCurves]] = {"GPS hold": [], "odometry (oracle-anchored)": []}
+    natural: dict[str, list[OutageCurves]] = {"GPS hold": [], "odometry (oracle-anchored)": []}
     all_spans = {}
     for d in split.dates():
         s, ref, diag = load_inputs(d), load_reference_for(d), load_diagnostics(d)
@@ -61,6 +63,19 @@ def main() -> int:
         reanch = odometry_reanchored(diag.odometry_100hz, ref, spans)
         for est in (hold, reanch):
             curves[est.name].append(outage_curves(compute_errors(est, dense), spans))
+        # natural outages (> 5 s without valid GPS, inside the reference span)
+        nat = [
+            (a, b)
+            for a, b in natural_outage_spans(s)
+            if a > int(dense.t_us[0]) and b < int(dense.t_us[-1])
+        ]
+        if nat:
+            hold_nat = gps_hold_baseline(s, cal)
+            reanch_nat = odometry_reanchored(diag.odometry_100hz, ref, nat)
+            for est in (hold_nat, reanch_nat):
+                natural[est.name].append(
+                    outage_curves(compute_errors(est, dense), nat, [0, 5, 10, 20, 30, 60, 120, 300])
+                )
         if d == split.dates()[2]:
             plot_trajectories(nodes, ests, out / f"trajectories_{d}.png", f"Baselines {d}")
             plot_errors_vs_time(
@@ -94,6 +109,39 @@ def main() -> int:
             final_error_m=np.concatenate([c.final_error_m for c in cs]),
         )
     plot_outage_growth(merged, out / "outage_growth.png", "Injected GPS outages, all sessions")
+    merged_nat = {}
+    for name, cs in natural.items():
+        cs = [c for c in cs if len(c.errors_m)]
+        if cs:
+            merged_nat[name] = OutageCurves(
+                offsets_s=cs[0].offsets_s,
+                errors_m=np.concatenate([c.errors_m for c in cs]),
+                durations_s=np.concatenate([c.durations_s for c in cs]),
+                final_error_m=np.concatenate([c.final_error_m for c in cs]),
+            )
+    if merged_nat:
+        plot_outage_growth(
+            merged_nat,
+            out / "natural_outage_growth.png",
+            "Natural GPS outages (> 5 s), all sessions",
+        )
+        nat_summary = {
+            name: {
+                "n_outages": len(c.errors_m),
+                "duration_s_median_p90_max": [
+                    float(np.median(c.durations_s)),
+                    float(np.percentile(c.durations_s, 90)),
+                    float(c.durations_s.max()),
+                ],
+                "offsets_s": c.offsets_s.tolist(),
+                "median_m": np.round(c.percentile(50), 3).tolist(),
+                "p90_m": np.round(c.percentile(90), 3).tolist(),
+                "final_error_median_m": float(np.nanmedian(c.final_error_m)),
+            }
+            for name, c in merged_nat.items()
+        }
+        (out / "natural_outage_curves.json").write_text(json.dumps(nat_summary, indent=1))
+        print(json.dumps(nat_summary, indent=1))
     summary = {
         name: {
             "n_outages": len(c.errors_m),

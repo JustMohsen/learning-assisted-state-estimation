@@ -39,6 +39,8 @@ def associate(est: NavEstimate, t_query: I64, max_staleness_us: int = 200_000) -
     Returns:
         Indices into ``est`` and a mask (False where no estimate is recent enough).
     """
+    if len(est.t_us) == 0:
+        return np.zeros(len(t_query), dtype=np.int64), np.zeros(len(t_query), dtype=bool)
     idx = np.searchsorted(est.t_us, t_query, side="right") - 1
     ok = idx >= 0
     safe = np.clip(idx, 0, len(est.t_us) - 1)

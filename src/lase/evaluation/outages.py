@@ -86,8 +86,13 @@ class OutageCurves:
     final_error_m: F64  # error at the outage end
 
     def percentile(self, q: float) -> F64:
-        """Per-offset percentile across outages (ignoring NaN)."""
-        out: F64 = np.nanpercentile(self.errors_m, q, axis=0)
+        """Per-offset percentile across outages (ignoring NaN; NaN where no outage is that long)."""
+        out: F64 = np.full(self.errors_m.shape[1], np.nan)
+        for k in range(self.errors_m.shape[1]):
+            col = self.errors_m[:, k]
+            col = col[np.isfinite(col)]
+            if len(col):
+                out[k] = np.percentile(col, q)
         return out
 
 

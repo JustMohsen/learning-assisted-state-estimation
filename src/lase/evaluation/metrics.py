@@ -35,6 +35,10 @@ def compute_errors(
 ) -> ErrorSeries:
     """Errors of ``est`` at the reference sample times (causal association)."""
     idx, ok = associate(est, ref.t_us, max_staleness_us)
+    if len(est.t_us) == 0:
+        n = len(ref.t_us)
+        nan2, nan1 = np.full((n, 2), np.nan), np.full(n, np.nan)
+        return ErrorSeries(ref.t_us, nan2, nan1, nan2.copy(), ok, np.zeros(n, dtype=bool))
     pos = est.pos_ne[idx] - ref.pos_ne
     head = wrap_angle(est.heading[idx] - ref.heading)
     vel = est.vel_ne[idx] - ref.vel_ne
@@ -50,6 +54,16 @@ def _rmse(x: F64) -> float:
 def summarize(errors: ErrorSeries | Sequence[ErrorSeries]) -> dict[str, float]:
     """Summary statistics; a sequence of series is pooled sample-wise (e.g. across days)."""
     es = [errors] if isinstance(errors, ErrorSeries) else list(errors)
+    if not es or sum(len(e.t_us) for e in es) == 0:
+        nan = float("nan")
+        keys = ("pos_rmse_m", "pos_mean_m", "pos_median_m", "pos_p95_m", "pos_max_m")
+        return {
+            "n": 0.0,
+            "coverage": nan,
+            **dict.fromkeys(keys, nan),
+            "heading_rmse_deg": nan,
+            "vel_rmse_mps": nan,
+        }
     a = np.concatenate([e.associated for e in es])
     pn = np.concatenate([e.pos_err_norm for e in es])[a]
     h = np.concatenate([e.heading_err for e in es])[a]
@@ -89,6 +103,11 @@ def relative_pose_error(
     Pairs are formed from reference sample times ``t`` and the first sample at or after
     ``t + delta_s``. Estimate values use causal association at both times.
     """
+    if len(est.t_us) == 0 or len(ref.t_us) == 0:
+        nan = float("nan")
+        return RpeResult(
+            delta_s=delta_s, n=0, trans_rmse_m=nan, trans_median_m=nan, heading_rmse_deg=nan
+        )
     t = ref.t_us
     j = np.searchsorted(t, t + int(delta_s * 1e6), side="left")
     ok_pair = j < len(t)
@@ -108,10 +127,11 @@ def relative_pose_error(
     d_est, h_est = rel(est.pos_ne[idx], est.heading[idx], i, j)
     te = np.linalg.norm(d_est - d_ref, axis=1)
     he = wrap_angle(h_est - h_ref)
+    finite = te[np.isfinite(te)]
     return RpeResult(
         delta_s=delta_s,
         n=len(te),
         trans_rmse_m=_rmse(te),
-        trans_median_m=float(np.nanmedian(te)) if len(te) else float("nan"),
+        trans_median_m=float(np.median(finite)) if len(finite) else float("nan"),
         heading_rmse_deg=float(np.degrees(_rmse(he))),
     )
