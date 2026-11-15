@@ -2,12 +2,12 @@
 
 Instructions for unattended work sessions, started 15 November 2026 (night 2). Any agent resuming work reads this file first.
 
-## Scope for this run (revised by the user ~02:50)
+## Scope for this run (revised again by the user in the morning)
 
-1. **Phase 2** (simulator + evaluation harness): complete. Continue **hardening it thoroughly**: fit simulator error models to real data, validate across more sessions, and add an evaluation entry point. Log: [PHASE_2_WORKLOG.md](./PHASE_2_WORKLOG.md).
-2. **Phase 3: planning only.** Do not implement on `main`. The draft plan [PHASE_3_BASELINE.md](./PHASE_3_BASELINE.md) is discussed with the user first. A prototype lives on branch `phase3-prototype` (do not merge).
+1. **Phase 2:** complete and hardened.
+2. **Phase 3: resume and finish** from the restored prototype. Continue from the first unchecked step of [PHASE_3_WORKLOG.md](./PHASE_3_WORKLOG.md). The review order afterwards is Phases 1 and 2 first, then Phase 3.
 3. **Do not start Phase 4.**
-4. At the end, write or update [REVIEW_PHASES.md](./REVIEW_PHASES.md): the decisions made, summaries, and where user input is needed (Phases 1 and 2, plus the Phase 3 draft plan).
+4. At the end, update [REVIEW_PHASES.md](./REVIEW_PHASES.md) with the Phase 3 results and decisions.
 
 ## Rules
 

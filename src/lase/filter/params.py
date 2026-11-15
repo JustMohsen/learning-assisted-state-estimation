@@ -1,0 +1,105 @@
+"""Filter configuration (tunable, YAML) and derived constant parameters (tensors)."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import torch
+from torch import Tensor
+
+from lase.data.calibration import NcltCalibration
+from lase.geometry.constants import GRAVITY_MPS2
+from lase.utils.config import Config, load_config
+from lase.utils.paths import repo_root
+
+
+class ProcessNoise(Config):
+    """Continuous-time noise densities."""
+
+    acc_noise_density: float = 0.02  # m/s^2/sqrt(Hz) (white specific-force noise, incl. vibration)
+    gyr_noise_density: float = 0.002  # rad/s/sqrt(Hz)
+    fog_angle_random_walk: float = 2e-4  # rad/sqrt(s), FOG body-z rate noise (white approx.)
+    acc_bias_rw: float = 1e-4  # m/s^2/sqrt(s)
+    gyr_bias_rw: float = 1e-5  # rad/s/sqrt(s)
+    fog_bias_rw: float = 1e-7  # rad/s/sqrt(s)
+
+
+class InitialPrior(Config):
+    """Initial standard deviations (common initial-pose prior)."""
+
+    pos_m: float = 0.5
+    vel_mps: float = 0.3
+    att_rad: tuple[float, float, float] = (0.02, 0.02, 0.02)
+    acc_bias_mps2: float = 0.1
+    gyr_bias_radps: float = 0.01
+    fog_bias_radps: float = 1e-4
+
+
+class WheelUpdateConfig(Config):
+    """Forward-speed update."""
+
+    enabled: bool = True
+    sigma_mps: float = 0.1
+    speed_scale: float | None = None  # None: use the calibration estimate
+    gate_prob: float = 0.999
+
+
+class GnssUpdateConfig(Config):
+    """Horizontal GPS position update."""
+
+    enabled: bool = True
+    sigma_m: float = 3.0
+    gate_prob: float = 0.999
+    skip_held: bool = True
+    recovery_after_s: float = 30.0  # inflate position covariance after this long of rejections
+    recovery_pos_sigma_m: float = 30.0
+
+
+class FilterConfig(Config):
+    """Complete analytical-baseline configuration."""
+
+    name: str = "eskf-baseline"
+    noise: ProcessNoise = ProcessNoise()
+    prior: InitialPrior = InitialPrior()
+    wheel: WheelUpdateConfig = WheelUpdateConfig()
+    gnss: GnssUpdateConfig = GnssUpdateConfig()
+    use_fog: bool = True
+    output_every: int = 1  # emit an estimate every n-th propagation step
+
+
+def load_filter_config(name_or_path: str | Path = "baseline") -> FilterConfig:
+    """Load ``configs/filter/<name>.yaml`` (or an explicit path)."""
+    p = Path(name_or_path)
+    if not p.suffix:
+        p = repo_root() / "configs" / "filter" / f"{name_or_path}.yaml"
+    return load_config(p, FilterConfig)
+
+
+@dataclass(frozen=True)
+class FilterParams:
+    """Constant tensors derived from calibration + config (float64)."""
+
+    l_imu: Tensor  # (3,) body origin -> IMU, body axes
+    l_gps: Tensor  # (3,) body origin -> GPS antenna
+    C_b_imu: Tensor  # (3, 3) IMU axes -> body
+    fog_sign: float
+    wheel_scale: float
+    gravity_w: Tensor  # (3,)
+
+    @classmethod
+    def build(cls, cal: NcltCalibration, cfg: FilterConfig) -> FilterParams:
+        """Derive tensors from the calibration config."""
+
+        def t(x: object) -> Tensor:
+            return torch.as_tensor(x, dtype=torch.float64)
+
+        scale = cfg.wheel.speed_scale or cal.wheels.speed_scale or 1.0
+        return cls(
+            l_imu=t(cal.sensors.imu.l_b),
+            l_gps=t(cal.sensors.gps.l_b),
+            C_b_imu=t(cal.sensors.imu.C_bs),
+            fog_sign=cal.fog_convention.angle_sign_to_ned_yaw,
+            wheel_scale=float(scale),
+            gravity_w=t([0.0, 0.0, GRAVITY_MPS2]),
+        )

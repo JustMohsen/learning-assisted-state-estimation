@@ -1,0 +1,10 @@
+# Noise matched to the baseline filter's model (configs/filter/baseline.yaml defaults), so
+# NEES/NIS test the filter's consistency in isolation: white GPS error (3 m), wheel noise
+# 0.1 m/s on the mean speed (0.141 per wheel), IMU white noise from the filter densities at
+# ~47 Hz (acc 0.02/sqrt(0.0213), gyro 0.002/sqrt(0.0213)), no FOG angle noise, biases inside
+# the filter priors.
+name: matched
+imu: {acc_noise_mps2: 0.137, gyr_noise_radps: 0.0137}
+fog: {angle_noise_rad: 0.0}
+wheels: {noise_mps: 0.141}
+gps: {white_sigma_m: 3.0, gm_sigma_m: 0.0, mode2_frac: 0.0}
