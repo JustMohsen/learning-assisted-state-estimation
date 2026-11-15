@@ -1,0 +1,25 @@
+{
+  "retrieved_on": "2026-11-13",
+  "source": "OpenAlex public Works API",
+  "method": "Published DOI records queried directly after title/author verification. cited_by_count is an index-specific count of citing works, not peer-reviewed-only citations, independent replications or benchmark uses. Preprint and published records are not summed.",
+  "records": [
+    {
+      "id": "https://openalex.org/W4385430610",
+      "title": "HDVIO: Improving Localization and Disturbance Estimation with Hybrid Dynamics VIO",
+      "doi": "https://doi.org/10.15607/rss.2023.xix.071",
+      "publication_year": 2023,
+      "cited_by_count": 16,
+      "record_updated_at": "2026-11-13T13:42:25.865203",
+      "source_url": "https://api.openalex.org/works/W4385430610"
+    },
+    {
+      "id": "https://openalex.org/W4413754773",
+      "title": "HDVIO2.0: Wind and Disturbance Estimation With Hybrid Dynamics VIO",
+      "doi": "https://doi.org/10.1109/tro.2025.3603551",
+      "publication_year": 2025,
+      "cited_by_count": 2,
+      "record_updated_at": "2026-11-10T11:39:43.021295",
+      "source_url": "https://api.openalex.org/works/W4413754773"
+    }
+  ]
+}

@@ -1,0 +1,189 @@
+{
+  "retrieved_on": "2026-11-13",
+  "source": "OpenAlex public API",
+  "method": "Selected DOI records retrieved directly; title-search matches manually checked against official sources. Counts are cited_by_count for indexed citing works, not counts of peer-reviewed papers or verified benchmark experiments.",
+  "deduplication": "No cross-record citation union computed. UrbanNav and Blackbird versions are reported separately, never summed. MILUV and UTIL preprint DOI lookups resolved to their selected journal records.",
+  "query_template": "https://api.openalex.org/works/{OpenAlexID}?select=id,display_name,publication_year,cited_by_count,doi",
+  "records": [
+    {
+      "dataset": "MILUV",
+      "role": "selected dataset or associated method paper",
+      "id": "https://openalex.org/W7120228190",
+      "display_name": "MILUV: A Multi-UAV Indoor Localization dataset with UWB and Vision",
+      "publication_year": 2026,
+      "cited_by_count": 5,
+      "doi": "https://doi.org/10.1177/02783649251405898",
+      "api_url": "https://api.openalex.org/works/W7120228190?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "UTIL",
+      "role": "selected dataset or associated method paper",
+      "id": "https://openalex.org/W4391543839",
+      "display_name": "UTIL: An ultra-wideband time-difference-of-arrival indoor localization dataset",
+      "publication_year": 2024,
+      "cited_by_count": 63,
+      "doi": "https://doi.org/10.1177/02783649241230640",
+      "api_url": "https://api.openalex.org/works/W4391543839?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "NTU VIRAL",
+      "role": "selected dataset or associated method paper",
+      "id": "https://openalex.org/W3214208961",
+      "display_name": "NTU VIRAL: A visual-inertial-ranging-lidar dataset, from an aerial vehicle viewpoint",
+      "publication_year": 2021,
+      "cited_by_count": 215,
+      "doi": "https://doi.org/10.1177/02783649211052312",
+      "api_url": "https://api.openalex.org/works/W3214208961?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "TUM VI",
+      "role": "selected dataset or associated method paper",
+      "id": "https://openalex.org/W2797395780",
+      "display_name": "The TUM VI Benchmark for Evaluating Visual-Inertial Odometry",
+      "publication_year": 2018,
+      "cited_by_count": 523,
+      "doi": "https://doi.org/10.1109/iros.2018.8593419",
+      "api_url": "https://api.openalex.org/works/W2797395780?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "Boreas",
+      "role": "selected dataset or associated method paper",
+      "id": "https://openalex.org/W4327692895",
+      "display_name": "Boreas: A multi-season autonomous driving dataset",
+      "publication_year": 2023,
+      "cited_by_count": 189,
+      "doi": "https://doi.org/10.1177/02783649231160195",
+      "api_url": "https://api.openalex.org/works/W4327692895?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "M2DGR",
+      "role": "selected dataset or associated method paper",
+      "id": "https://openalex.org/W4285512293",
+      "display_name": "M2DGR: A Multi-Sensor and Multi-Scenario SLAM Dataset for Ground Robots",
+      "publication_year": 2021,
+      "cited_by_count": 331,
+      "doi": "https://doi.org/10.1109/lra.2021.3138527",
+      "api_url": "https://api.openalex.org/works/W4285512293?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "NeuroBEM",
+      "role": "selected dataset or associated method paper",
+      "id": "https://openalex.org/W3177010373",
+      "display_name": "NeuroBEM: Hybrid Aerodynamic Quadrotor Model",
+      "publication_year": 2021,
+      "cited_by_count": 166,
+      "doi": "https://doi.org/10.15607/rss.2021.xvii.042",
+      "api_url": "https://api.openalex.org/works/W3177010373?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "Blackbird",
+      "role": "selected dataset or associated method paper",
+      "id": "https://openalex.org/W3011186507",
+      "display_name": "The Blackbird UAV dataset",
+      "publication_year": 2020,
+      "cited_by_count": 44,
+      "doi": "https://doi.org/10.1177/0278364920908331",
+      "api_url": "https://api.openalex.org/works/W3011186507?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "Newer College",
+      "role": "selected dataset or associated method paper",
+      "id": "https://openalex.org/W3012175130",
+      "display_name": "The Newer College Dataset: Handheld LiDAR, Inertial and Vision with Ground Truth",
+      "publication_year": 2020,
+      "cited_by_count": 266,
+      "doi": "https://doi.org/10.1109/iros45743.2020.9340849",
+      "api_url": "https://api.openalex.org/works/W3012175130?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "AQUALOC",
+      "role": "selected dataset or associated method paper",
+      "id": "https://openalex.org/W2981635988",
+      "display_name": "AQUALOC: An underwater dataset for visual–inertial–pressure localization",
+      "publication_year": 2019,
+      "cited_by_count": 144,
+      "doi": "https://doi.org/10.1177/0278364919883346",
+      "api_url": "https://api.openalex.org/works/W2981635988?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "KITTI data paper",
+      "role": "selected dataset or associated method paper",
+      "id": "https://openalex.org/W2115579991",
+      "display_name": "Vision meets robotics: The KITTI dataset",
+      "publication_year": 2013,
+      "cited_by_count": 10205,
+      "doi": "https://doi.org/10.1177/0278364913491297",
+      "api_url": "https://api.openalex.org/works/W2115579991?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "NCLT",
+      "role": "selected dataset paper",
+      "id": "https://openalex.org/W2335829695",
+      "display_name": "University of Michigan North Campus long-term vision and lidar dataset",
+      "publication_year": 2015,
+      "cited_by_count": 590,
+      "doi": "https://doi.org/10.1177/0278364915614638",
+      "api_url": "https://api.openalex.org/works/W2335829695?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "SPEED+",
+      "role": "selected dataset paper",
+      "id": "https://openalex.org/W3202897977",
+      "display_name": "SPEED+: Next-Generation Dataset for Spacecraft Pose Estimation across Domain Gap",
+      "publication_year": 2022,
+      "cited_by_count": 195,
+      "doi": "https://doi.org/10.1109/aero53065.2022.9843439",
+      "api_url": "https://api.openalex.org/works/W3202897977?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "UrbanNav",
+      "role": "selected dataset paper",
+      "id": "https://openalex.org/W4383220232",
+      "display_name": "Hong Kong UrbanNav: An Open-Source Multisensory Dataset for Benchmarking Urban Navigation Algorithms",
+      "publication_year": 2023,
+      "cited_by_count": 106,
+      "doi": "https://doi.org/10.33012/navi.602",
+      "api_url": "https://api.openalex.org/works/W4383220232?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "UrbanNav",
+      "role": "selected dataset paper",
+      "id": "https://openalex.org/W3205114100",
+      "display_name": "UrbanNav:An Open-Sourced Multisensory Dataset for Benchmarking Positioning Algorithms Designed for Urban Areas",
+      "publication_year": 2021,
+      "cited_by_count": 147,
+      "doi": "https://doi.org/10.33012/2021.17895",
+      "api_url": "https://api.openalex.org/works/W3205114100?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "SHIRT paper",
+      "role": "associated method paper introducing SHIRT; proxy rather than dataset-use count",
+      "id": "https://openalex.org/W4383909160",
+      "display_name": "Adaptive Neural-Network-Based Unscented Kalman Filter for Robust Pose Tracking of Noncooperative Spacecraft",
+      "publication_year": 2023,
+      "cited_by_count": 81,
+      "doi": "https://doi.org/10.2514/1.g007387",
+      "api_url": "https://api.openalex.org/works/W4383909160?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "Blackbird",
+      "role": "earlier ISER conference/proceedings paper; do not sum with journal record",
+      "id": "https://openalex.org/W2895010059",
+      "display_name": "The Blackbird Dataset: A Large-Scale Dataset for UAV Perception in Aggressive Flight",
+      "publication_year": 2020,
+      "cited_by_count": 62,
+      "doi": "https://doi.org/10.1007/978-3-030-33950-0_12",
+      "api_url": "https://api.openalex.org/works/W2895010059?select=id,display_name,publication_year,cited_by_count,doi"
+    },
+    {
+      "dataset": "EuRoC MAV",
+      "role": "selected dataset paper",
+      "id": "https://openalex.org/W2396274919",
+      "display_name": "The EuRoC micro aerial vehicle datasets",
+      "publication_year": 2016,
+      "cited_by_count": 2172,
+      "doi": "https://doi.org/10.1177/0278364915620033",
+      "api_url": "https://api.openalex.org/works/W2396274919?select=id,display_name,publication_year,cited_by_count,doi"
+    }
+  ]
+}

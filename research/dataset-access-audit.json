@@ -1,0 +1,68 @@
+{
+  "checked_on_local": "2026-11-13",
+  "time_zone": "America/Toronto",
+  "purpose": "Public-data access checks for application/dataset selection; no sensor archive bodies downloaded and no estimator reproduced.",
+  "vid": {
+    "source": "https://github.com/ZJU-FAST-Lab/VID-Dataset",
+    "publisher_share": "http://zjufast.kmras.com:9110/share.cgi?ssid=e08267c50fbe4e4bb9cdfe40f9fdb712",
+    "authentication": "Authors' publicly documented shared password accepted.",
+    "listing": "Authenticated share listing returned indoor, motortest, night and outdoor directories. Indoor listing returned eight .bag files.",
+    "files": [
+      {
+        "name": "indoor_loaded_8_3103.2g_load269.0g_138.41s.bag",
+        "bytes": 10299551893
+      },
+      {
+        "name": "indoor_loaded_hovor_3103.2g_load269.0g_80.11s.bag",
+        "bytes": 5960893648
+      },
+      {
+        "name": "indoor_loaded_round_3103.2g_load269.0g_107.15s.bag",
+        "bytes": 7973146411
+      },
+      {
+        "name": "indoor_loadless_8_3096.1g_109.17s.bag",
+        "bytes": 8121789983
+      },
+      {
+        "name": "indoor_loadless_hovor_3096.1g_79.04s.bag",
+        "bytes": 5879866888
+      },
+      {
+        "name": "indoor_loadless_round_3096.1g_117.89s.bag",
+        "bytes": 8770541296
+      },
+      {
+        "name": "indoor_sensor_fast_3101.5g_126.53s.bag",
+        "bytes": 9423125175
+      },
+      {
+        "name": "indoor_sensor_slow_3101.5g_155.38s.bag",
+        "bytes": 11569450847
+      }
+    ],
+    "total_bytes": 67998366141,
+    "nominal_seconds_from_filenames": 913.68,
+    "duration_caveat": "Nominal duration parsed from publisher filenames, not validated against ROS bag message timestamps.",
+    "download_probe": {
+      "method": "HEAD",
+      "file": "indoor_loadless_hovor_3096.1g_79.04s.bag",
+      "status": 200,
+      "content_length": 5879866888,
+      "body_downloaded": false
+    }
+  },
+  "kit": {
+    "doi": "10.35097/44a91t97pmnha1k9",
+    "source": "https://www.radar-service.eu/radar/en/dataset/44a91t97pmnha1k9",
+    "normal_public_download_route": "https://www.radar-service.eu/radar/dataset/download/44a91t97pmnha1k9",
+    "archive_route": "https://www.radar-service.eu/radar/de/dataset/44a91t97pmnha1k9/datasetBinaryTreeStream",
+    "download_probe": {
+      "method": "HEAD",
+      "status": 200,
+      "content_type": "application/tar",
+      "body_downloaded": false
+    },
+    "note": "Direct schema.org backend content URL returned 401; normal anonymous frontend route returned an accessible archive. Do not interpret the backend status as absence of public access."
+  }
+}
