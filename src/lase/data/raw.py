@@ -25,7 +25,7 @@ import pandas as pd
 
 from lase.utils.config import Config
 
-LOADER_VERSION = 1
+LOADER_VERSION = 2
 """Bump when parsing or flagging changes, to invalidate caches."""
 
 F64 = npt.NDArray[np.float64]
@@ -161,11 +161,9 @@ def _flag(flags: U16, mask: B, flag: RowFlag) -> None:
     flags[mask] |= np.uint16(flag)
 
 
-def load_imu(path: Path, limits: RawLimits | None = None) -> ImuRecord:
-    """Load ``ms25.csv``: utime, mag xyz, acc xyz, gyro xyz."""
+def make_imu(t: I64, mag: F64, acc: F64, gyr: F64, limits: RawLimits | None = None) -> ImuRecord:
+    """Build an :class:`ImuRecord` with validity flags (shared by loaders and the simulator)."""
     lim = limits or RawLimits()
-    t, v = read_numeric_csv(path, 10)
-    mag, acc, gyr = v[:, 0:3], v[:, 3:6], v[:, 6:9]
     flags = _time_flags(t)
     _flag(flags, ~np.isfinite(acc).all(1) | ~np.isfinite(gyr).all(1), RowFlag.NON_FINITE)
     _flag(
@@ -177,38 +175,57 @@ def load_imu(path: Path, limits: RawLimits | None = None) -> ImuRecord:
     return ImuRecord(t_us=t, flags=flags, mag=mag.copy(), acc=acc.copy(), gyr=gyr.copy())
 
 
+def load_imu(path: Path, limits: RawLimits | None = None) -> ImuRecord:
+    """Load ``ms25.csv``: utime, mag xyz, acc xyz, gyro xyz."""
+    t, v = read_numeric_csv(path, 10)
+    return make_imu(t, v[:, 0:3], v[:, 3:6], v[:, 6:9], limits)
+
+
+def make_fog(t: I64, angle: F64) -> FogRecord:
+    """Build a :class:`FogRecord` with validity flags."""
+    flags = _time_flags(t)
+    _flag(flags, ~np.isfinite(angle), RowFlag.NON_FINITE)
+    return FogRecord(t_us=t, flags=flags, angle=np.asarray(angle, dtype=np.float64).copy())
+
+
 def load_fog(path: Path) -> FogRecord:
     """Load ``kvh.csv``: utime, integrated heading angle (rad)."""
     t, v = read_numeric_csv(path, 2)
-    angle = v[:, 0].copy()
-    flags = _time_flags(t)
-    _flag(flags, ~np.isfinite(angle), RowFlag.NON_FINITE)
-    return FogRecord(t_us=t, flags=flags, angle=angle)
+    return make_fog(t, v[:, 0])
 
 
-def load_wheels(path: Path, limits: RawLimits | None = None) -> WheelRecord:
-    """Load ``wheels.csv``: utime, left speed, right speed (m/s)."""
+def make_wheels(t: I64, left: F64, right: F64, limits: RawLimits | None = None) -> WheelRecord:
+    """Build a :class:`WheelRecord` with validity flags."""
     lim = limits or RawLimits()
-    t, v = read_numeric_csv(path, 3)
+    v = np.stack([left, right], axis=1)
     flags = _time_flags(t)
     _flag(flags, ~np.isfinite(v).all(1), RowFlag.NON_FINITE)
     _flag(flags, (np.abs(v) > lim.max_wheel_speed_mps).any(1), RowFlag.OUT_OF_RANGE)
     return WheelRecord(t_us=t, flags=flags, left=v[:, 0].copy(), right=v[:, 1].copy())
 
 
-def load_gps(path: Path, limits: RawLimits | None = None) -> GpsRecord:
-    """Load ``gps.csv`` or ``gps_rtk.csv``: utime, mode, num_sats, lat, lon, alt, track, speed."""
+def load_wheels(path: Path, limits: RawLimits | None = None) -> WheelRecord:
+    """Load ``wheels.csv``: utime, left speed, right speed (m/s)."""
+    t, v = read_numeric_csv(path, 3)
+    return make_wheels(t, v[:, 0], v[:, 1], limits)
+
+
+def make_gps(
+    t: I64,
+    mode: I64,
+    num_sats: I64,
+    lat: F64,
+    lon: F64,
+    alt: F64,
+    track: F64,
+    speed: F64,
+    limits: RawLimits | None = None,
+) -> GpsRecord:
+    """Build a :class:`GpsRecord` with validity flags (incl. no-fix and held positions)."""
     lim = limits or RawLimits()
-    t, v = read_numeric_csv(path, 8)
-    mode = np.nan_to_num(v[:, 0], nan=-1).astype(np.int64)
-    lat, lon, alt = v[:, 2].copy(), v[:, 3].copy(), v[:, 4].copy()
     flags = _time_flags(t)
     _flag(flags, ~(np.isfinite(lat) & np.isfinite(lon)), RowFlag.NON_FINITE)
-    _flag(
-        flags,
-        (np.abs(lat) > np.pi / 2) | (np.abs(lon) > np.pi),
-        RowFlag.OUT_OF_RANGE,
-    )
+    _flag(flags, (np.abs(lat) > np.pi / 2) | (np.abs(lon) > np.pi), RowFlag.OUT_OF_RANGE)
     _flag(flags, mode < lim.min_gps_fix_mode, RowFlag.GPS_NO_FIX)
     held = np.zeros(len(t), dtype=bool)
     if len(t) > 1:
@@ -218,12 +235,28 @@ def load_gps(path: Path, limits: RawLimits | None = None) -> GpsRecord:
         t_us=t,
         flags=flags,
         mode=mode,
-        num_sats=np.nan_to_num(v[:, 1], nan=-1).astype(np.int64),
-        lat=lat,
-        lon=lon,
-        alt=alt,
-        track=v[:, 5].copy(),
-        speed=v[:, 6].copy(),
+        num_sats=num_sats,
+        lat=lat.copy(),
+        lon=lon.copy(),
+        alt=alt.copy(),
+        track=track.copy(),
+        speed=speed.copy(),
+    )
+
+
+def load_gps(path: Path, limits: RawLimits | None = None) -> GpsRecord:
+    """Load ``gps.csv`` or ``gps_rtk.csv``: utime, mode, num_sats, lat, lon, alt, track, speed."""
+    t, v = read_numeric_csv(path, 8)
+    return make_gps(
+        t,
+        np.nan_to_num(v[:, 0], nan=-1).astype(np.int64),
+        np.nan_to_num(v[:, 1], nan=-1).astype(np.int64),
+        v[:, 2],
+        v[:, 3],
+        v[:, 4],
+        v[:, 5],
+        v[:, 6],
+        limits,
     )
 
 

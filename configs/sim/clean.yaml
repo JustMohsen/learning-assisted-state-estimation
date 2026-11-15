@@ -1,0 +1,6 @@
+# No sensor errors at all (wheel scale 1, no noise, no biases). For integrator checks.
+name: clean
+imu: {acc_noise_mps2: 0, gyr_noise_radps: 0, acc_bias_init_mps2: 0, gyr_bias_init_radps: 0, acc_bias_rw_mps2_sqrts: 0, gyr_bias_rw_radps_sqrts: 0}
+fog: {angle_noise_rad: 0, bias_init_radps: 0, bias_rw_radps_sqrts: 0}
+wheels: {speed_scale: 1.0, noise_mps: 0}
+gps: {white_sigma_m: 0, gm_sigma_m: 0, mode2_frac: 0}

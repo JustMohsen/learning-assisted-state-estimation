@@ -1,0 +1,6 @@
+# Constant and drifting biases only (no white noise); wheel scale and GPS exact.
+name: biased
+imu: {acc_noise_mps2: 0, gyr_noise_radps: 0}
+fog: {angle_noise_rad: 0}
+wheels: {noise_mps: 0}
+gps: {white_sigma_m: 0, gm_sigma_m: 0, mode2_frac: 0}

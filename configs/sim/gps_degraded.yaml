@@ -1,0 +1,7 @@
+# Nominal plus GPS noise bursts, multipath outliers, held fixes and injected outages.
+name: gps_degraded
+gps:
+  burst_rate_per_min: 0.5
+  outlier_prob: 0.03
+  held_prob: 0.01
+  outage_rate_per_hour: 6.0

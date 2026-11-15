@@ -27,6 +27,7 @@ dev = [
     "pytest>=9.2.0",
     "pytest-cov>=7.1.0",
     "ruff>=0.17.5",
+    "scipy-stubs>=1.18.1.1",
     "types-pyyaml>=6.0.12.20261113",
     "types-tqdm>=4.70.0.20261106",
 ]

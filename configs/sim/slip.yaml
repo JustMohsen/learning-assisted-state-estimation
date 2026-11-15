@@ -1,0 +1,4 @@
+# Nominal plus wheel-slip episodes.
+name: slip
+wheels:
+  slip: {rate_per_min: 2.0}
