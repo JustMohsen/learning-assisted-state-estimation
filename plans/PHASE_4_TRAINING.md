@@ -25,6 +25,8 @@ Phase 3 decisions and findings that shape Phase 4:
 | No kinetics | NCLT has no torque, current or command data; the IMU measures the effect of the forces directly, so no dynamic model. | The lean-to-acceleration coupling of the balance controller is a candidate learned effect for the network (Phase 5), not a constant in B. |
 | Left/right wheels | Not used for yaw rate in the filter. Measured on 5 training days (1 s windows): left/right scale difference +0.75 to +0.99% in every session (left reads higher); wheel turn-rate noise ~0.03 rad/s (≈1,500× FOG, ≈15× MEMS gyro); standstill is not a clean no-rotation reference (1.55° apparent turn vs 0.21° from the FOG over 2.6 min). Decision: no wheel yaw-rate update, no separate left/right scale or difference states. | **Keep left and right wheel speeds separately in the training data and caches** (not only their mean), plus the FOG turn rate, so Phase 5 can use them as network inputs: left and right speeds, and a wheel-versus-FOG turn-rate mismatch `(v_L − v_R)/W − r_FOG`, a skid/slip indicator. Expect a ~1% speed-proportional offset in that feature from the left/right scale difference. Not learned in B. |
 | Wheel scale (R6) | Chained online scale state (start 1.0, σ 0.05) converged within one session but to the wrong value (1.077–1.088 vs 1.044–1.058 measured from the reference in Phase 1) and claimed σ ≈ 0.0014 (~20× overconfident): it absorbs some other model error. Fixed 1.054 was better on position, drift and outages (3 days). Proposed Phase 3 decision: A keeps the scale fixed at 1.054 (prior σ 0, chain off; the state stays in the layout). | B stage 2 learns the **scale value** as an anchored constant (anchor 1.054, σ_anchor ≈ 0.015 from the Phase 1 spread). A **wheel-scale diagnostic** step tests which error the free scale absorbs. Year-long drift (1.044 → 1.085; 1.054 is ~2.5% low on the 2013 validation days) is left to method C or a later online state. |
+| FOG bias (R5, R7a) | Two parts: per-session turn-on offset −25 to +28°/h, and a within-session change of ~5–20°/h over 30–60 min. No correlation with time since start, season, pitch or roll rate; no temperature in NCLT. Matches the KVH datasheet (±20°/h turn-on, 6°/h temperature). A now uses prior 1e-4 rad/s and random walk 1e-6 rad/s/√s (≈ 20.6°/h and ≈ 12°/h per hour: consistent with both parts). Accuracy almost tied with the old 1e-5 / 1e-7 (score 1.591 vs 1.609); chosen because only a realistic prior absorbs the turn-on offset. | Anchors 1e-4 and 1e-6. These are **slow parameters** (D7): invisible to 30 s chunks, learned in the slow group. Expect a flat loss, so the anchors will likely hold. |
+| GPS error model (R7a) | The 2 Gauss–Markov error states (2.53 m / 55 s + 1.44 m white) are much worse on real data (position median 6.5–9.0 m vs 3.0 m; heading 2.4–4.2° vs 1.8–1.9°) though they helped in simulation (NEES 19.7 → 1.9). Slow GPS-vs-dead-reckoning disagreements go to the GPS-error state (reached 14 m, 5.7σ) because dead reckoning is overconfident (unmodelled FOG bias drift, wheel-scale error). Not a code bug. A keeps white GPS (σ 5 m, 1 Hz); the error states stay in the layout, off by default. | Learn the GPS error states **only jointly with the dead-reckoning process noise** (slow group, D7). A learned short τ or small correlated σ means "white GPS". Report learned FOG bias noise and GPS noise together: B can trade one against the other for the same loss. |
 | State layout (pending) | Terrain-gradient option `nonholonomic.vertical_mode: grade` adds 2 states (∂h/∂N, ∂h/∂E; indices 19–20, `N_ERR` 19 → 21): the axle follows an estimated slope instead of flat ground. Default (off / level / grade) decided in Phase 3 R7b. | **Phase 4 code uses `N_ERR` and the state slices only, never hard-coded sizes.** Caches of warm-start states and covariances record the state layout in their provenance. If the grade states are on, B also learns their noise (see D1). |
 
 ## 2. Decisions (agreed with the user)
@@ -35,17 +37,16 @@ Phase 3 decisions and findings that shape Phase 4:
 
 | Group | Learned quantities |
 |---|---|
-| GPS | white σ; with the GPS error state on, correlated-error σ and correlation time τ |
+| GPS | white σ; with the GPS error state on, correlated-error σ and correlation time τ (slow group, D7) |
 | Wheels | forward-speed σ |
 | Lateral constraint | lateral σ (the constraint's trust; scope requirement) |
-| IMU | accelerometer and gyro noise densities; accelerometer and gyro bias random walks |
-| FOG | angle random walk, bias random walk |
+| IMU | accelerometer and gyro noise densities; accelerometer and gyro bias random walks (bias random walks: slow group, D7) |
+| FOG | angle random walk; bias random walk (slow group, D7; anchor 1e-6 rad/s/√s) |
 | Terrain gradient (only if the grade states are on) | grade random walk; vertical-constraint σ |
 
 **Stage 2: model constants**, as anchored deviations:
 - **wheel speed scale value** (anchor 1.054, σ_anchor ≈ 0.015 from the Phase 1 per-session spread). The state stays in the layout but frozen (prior σ 0). The learned value is compared with the Phase 1 independent measurement: a value well above it with a real loss gain is reported as an *effective* scale compensating another error, not a tyre measurement.
 - encoder pitch coefficient `R_w` (physically ≈ wheel radius; anchor 0.24 m, σ_anchor ≈ 0.04 m);
-- starting uncertainties of the FOG/gyro bias and wheel-scale states;
 - possibly small mounting corrections, if identifiable.
 
 Not learned:
@@ -95,7 +96,7 @@ The baseline runs at ~2 ms per IMU step forward, roughly 6–8 ms with the backw
 
    stored as tensors, with provenance. The exact-time splitting and the causal FOG handling are encoded in the schedule.
 3. **Batched masked runner:** B chunks step through their schedules in parallel. At each step every chunk applies the operation it needs, and the others are masked. The Python loop cost is shared across the batch: target B = 32–128.
-4. **Warm starts and burn-in:** a chunk starts from baseline A's cached state and covariance at that time, then runs a **20 s burn-in** without gradient, so the state adapts to B's current constants. The **10 s loss window** follows with backpropagation. Chunks may continue chronologically, carrying state across windows with gradients detached (the scope's truncated backpropagation, now with many parallel streams).
+4. **Warm starts and burn-in:** a chunk starts from baseline A's cached state and covariance at that time, then runs a **20 s burn-in** without gradient, so the state adapts to B's current constants. The cached state includes the bias estimates, so only chunks at a true session start begin with zero bias; those stay in training because the filter must handle the turn-on offset. The **10 s loss window** follows with backpropagation. Chunks may continue chronologically, carrying state across windows with gradients detached (the scope's truncated backpropagation, now with many parallel streams).
 5. **Hardware:**
    - The filter needs float64, which Apple's GPU backend (MPS) does not support, so it runs on the **CPU**. (A float32 filter is a possible later experiment, not part of the core plan: see section 5.)
    - `torch.compile` is a measured option later.
@@ -132,6 +133,20 @@ Gating, re-acquisition and interval splitting stay as they are. Gradients flow t
 
 All of these become named, commented parameters in `configs/parameters.yaml` (new `training` section) **once the user confirms the file is safe to edit**. Until then they live in this plan.
 
+### D7. Slow parameters (proposed 15 November 2026; awaiting the user's decision)
+
+Some quantities only affect the estimate over minutes, so 30 s chunks give them almost no gradient:
+- FOG bias random walk 1e-6 rad/s/√s adds only ~5.5e-6 rad/s (~1°/h) of bias uncertainty over a 30 s chunk: under 0.01° of heading in the loss window;
+- bias priors matter only at a true session start (other chunks start from A's cached covariance);
+- the GPS correlation time (55 s) exceeds the chunk length.
+
+**Proposal:**
+- **Fast group:** white noise levels, wheel σ, lateral σ, accelerometer/gyro/FOG white noise, plus stage 2 constants. Learned by gradient on 30 s chunks (D3).
+- **Slow group:** FOG and gyro bias priors and random walks, accelerometer bias random walk, GPS error-state σ and τ. Learned **jointly** (they trade against each other), with the fast group held at its learned values, by:
+  - (a) **full-session causal replays without gradient** over a small grid around the anchors (first choice: cheap, same horizon as A's tuning), or
+  - (b) long chunks (5–10 min) with gradient checkpointing, after a cost estimate.
+- GPS error states are tried only in this joint search, never alone (R7a failure).
+
 ## 3. Work order
 
 ```mermaid
@@ -141,7 +156,8 @@ flowchart TD
     W3 --> W4["4. Losses, gradcheck,<br/>finite differences, loss scan"]
     W4 --> W5["5. Simulation recovery"]
     W5 --> W6["6. Method B stage 1 on real data<br/>(local; cloud estimate if needed)"]
-    W6 --> W7["7. Stage 2 model constants<br/>(incl. wheel scale value)"]
+    W6 --> W6a["6a. Slow group (D7):<br/>bias noise + GPS error model, jointly"]
+    W6a --> W7["7. Stage 2 model constants<br/>(incl. wheel scale value)"]
     W7 --> W7a["7a. Wheel-scale diagnostic"]
     W7a --> W8["8. Evaluate B vs A on validation days;<br/>report and review"]
 ```
@@ -154,7 +170,8 @@ flowchart TD
 | 4 | Loss module (task, innovation NLL, anchor penalty); gradient tests | D5 rows 1–3 pass |
 | 5 | Recovery experiment on simulated data | D5 row 4 passes |
 | 6 | B stage 1 trained; learned δ table | D5 row 5; validation-day comparison with A |
-| 7 | Stage 2 constants (wheel scale value, encoder coefficient, bias priors) | Identifiability report per constant; learned scale vs the Phase 1 measurement |
+| 6a | Slow group (D7): FOG/gyro bias priors and random walks with the GPS error model, jointly | Learned FOG bias noise and GPS noise reported together; GPS error states with vs without; loss flatness around the anchors |
+| 7 | Stage 2 constants (wheel scale value, encoder coefficient, bias priors) | Identifiability report per constant (incl. loss curvature at the optimum: nearly flat directions mixing e.g. FOG bias noise and GPS σ mean the data cannot separate them); learned scale vs the Phase 1 measurement |
 | 7a | **Wheel-scale diagnostic:** rerun the chained online scale state inside B (learned noise, GPS error states on), with and without learning `R_w` jointly | Does the free scale converge near the Phase 1 values (1.044–1.058) once correlated GPS error and the encoder term are handled? Identifies the absorbed error, or narrows the candidates |
 | 8 | Phase 4 report; review notes | User review |
 
@@ -168,6 +185,8 @@ flowchart TD
 | Non-identifiable constants | Anchor penalty plus the identifiability report |
 | Warm-start mismatch (cached state from A, constants from B) | 20 s burn-in; check sensitivity to burn-in length |
 | Learned constants absorb unmodelled errors (as the R6 scale state did) | Anchor penalty; compare each learned constant with its independent measurement; report as "effective" when they disagree |
+| Slow parameters get no gradient from 30 s chunks; a flat loss is then misread as "not identifiable" | Slow group handled separately (D7) with full-session horizon |
+| GPS error states absorb dead-reckoning error (R7a) | Only learned jointly with the dead-reckoning process noise; compared with white GPS |
 | State layout changes (e.g. grade states) after caches are built | Layout recorded in cache provenance; caches rebuilt automatically when it changes; no hard-coded sizes |
 
 ## 5. Optional experiment: float32 filter (not part of the core plan)
@@ -196,3 +215,11 @@ On the laptop CPU alone the gain is small (maybe 1.2–2×), because the cost is
 4. float64 stays the reference: gradient checks and the verification path remain float64.
 
 **Gate before adopting it:** run baseline A in float32 and float64 on the same sessions and compare accuracy, covariance health (positive variances, condition number) and NEES. Adopt float32 only if it matches within noise. It would change the convention "filter float64, network float32" (CONVENTIONS.md), so it needs the user's approval.
+
+## 6. Notes for Phase 5 (method C), from Phase 3 R5/R7a
+
+Recorded here until the Phase 5 plan exists.
+- **FOG turn-on offset is not predictable from context.** If the network learns it on training days, it is memorising sessions. Give the network **no date, absolute time, session identity, or absolute position** features.
+- The within-session FOG bias change may also be unpredictable from the available inputs.
+- **Better output:** how fast the bias may change. A multiplier on the FOG bias random walk (like the existing trust multipliers) lets the filter estimate the value. Adaptive process noise is more likely to generalise. Caveat (D7): its effect shows over minutes, so training it needs long-horizon chunks.
+- Context-dependent GPS errors (multipath, re-acquisition) stay with the GPS trust multiplier.
