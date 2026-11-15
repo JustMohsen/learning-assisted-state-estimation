@@ -44,8 +44,8 @@ filter:
 
   nonholonomic:                      # soft pseudo-measurement: axle does not slide sideways/vertically
     enabled: true                    # on in baseline A (user decision, Phase 3 review)
-    sigma_lateral_mps: 0.1           # m/s allowed lateral axle velocity (along the axle; pitch-independent) [design; retune R7]
-    vertical_mode: "off"             # off | body (body-z velocity ~ 0; biased by v*sin(pitch)) | level (world-vertical axle velocity ~ 0; pitch-independent) | grade (axle follows an estimated terrain slope: v_D = -grad(h) . v_horizontal) [decided in R7b]
+    sigma_lateral_mps: 0.2           # m/s allowed lateral axle velocity (along the axle; pitch-independent); 0.1 / 0.05 worse (R7b); NIS 0.18 = under-confident, revisit in R8 [tuned, R7b]
+    vertical_mode: "grade"           # R7b winner (level nearly tied, off clearly worse: p95 11.9 vs 8.0 m); off | body (body-z velocity ~ 0; biased by v*sin(pitch)) | level (world-vertical axle velocity ~ 0; pitch-independent) | grade (axle follows an estimated terrain slope: v_D = -grad(h) . v_horizontal) [decided in R7b]
     sigma_vertical_mps: 0.1          # m/s, used when vertical_mode is body, level or grade (level: covers slopes of a few %) [design]
     grade_prior_sigma: 0.05          # initial terrain-gradient sigma per axis (rise/run); campus |grade| median 1.3%, p99 9% [measured]
     grade_rw_per_sqrt_m: 0.01        # terrain-gradient random walk per sqrt(metre travelled): ~3% change over 10 m [design]
