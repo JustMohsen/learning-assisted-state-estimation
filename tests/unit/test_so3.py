@@ -58,3 +58,13 @@ def test_exp_gradient_finite_at_zero() -> None:
     so3_exp(phi).sum().backward()
     assert phi.grad is not None
     assert torch.isfinite(phi.grad).all()
+
+
+def test_right_jacobian_definition() -> None:
+    from lase.filter.so3 import so3_right_jacobian
+
+    phi = _rotvecs(50)[5:]
+    d = 1e-7 * torch.randn(45, 3)
+    lhs = so3_exp(phi + d)
+    rhs = so3_exp(phi) @ so3_exp((so3_right_jacobian(phi) @ d[..., None])[..., 0])
+    np.testing.assert_allclose(lhs.numpy(), rhs.numpy(), atol=1e-12)

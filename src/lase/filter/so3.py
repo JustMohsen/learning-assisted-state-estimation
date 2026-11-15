@@ -166,3 +166,16 @@ def yaw_of(C: Tensor) -> Tensor:
 def wrap(a: Tensor) -> Tensor:
     """Wrap angles to (-pi, pi]."""
     return torch.atan2(torch.sin(a), torch.cos(a))
+
+
+def so3_right_jacobian(phi: Tensor) -> Tensor:
+    """Right Jacobian ``J_r(phi)``: ``Exp(phi + d) ≈ Exp(phi) Exp(J_r(phi) d)``. (..., 3, 3)."""
+    theta2 = (phi * phi).sum(-1)
+    small = theta2 < _EPS
+    t2 = torch.where(small, torch.ones_like(theta2), theta2)
+    t = torch.sqrt(t2)
+    b = torch.where(small, 0.5 - theta2 / 24, (1 - torch.cos(t)) / t2)
+    c = torch.where(small, 1 / 6 - theta2 / 120, (t - torch.sin(t)) / (t2 * t))
+    K = skew(phi)
+    eye = torch.eye(3, dtype=phi.dtype, device=phi.device).expand(K.shape)
+    return eye - b[..., None, None] * K + c[..., None, None] * (K @ K)
