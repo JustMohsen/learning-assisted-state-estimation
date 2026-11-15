@@ -58,13 +58,13 @@ flowchart TD
 
 | Item | Choice |
 |---|---|
-| Hosting | GitHub repository, private initially. `main` branch protected; work on feature branches merged through pull requests. |
+| Hosting | GitHub repository, private initially. During initial development, commits go directly to `main`; feature branches and pull requests are optional. |
 | Python | 3.12, pinned in `.python-version` |
 | Package and environment manager | **uv**: `pyproject.toml` + committed `uv.lock`; `uv sync` reproduces the environment exactly |
 | Core dependencies | `torch`, `numpy`, `scipy`, `pandas`, `matplotlib`, `pydantic` (validated configs), `pyyaml`, `tqdm` |
 | Dev dependencies | `ruff` (lint + format), `mypy` (type checking), `pytest`, `pytest-cov`, `pre-commit`, `jupyter` |
 | Optional, added when needed | `tensorboard` (training curves), `evo` (trajectory-metric cross-check), `gtsam` (independent smoother cross-check) |
-| Quality gates | Pre-commit hooks: ruff format, ruff lint, mypy. GitHub Actions CI on every PR: lint, type check, unit tests on CPU. |
+| Quality gates | Pre-commit hooks: ruff format, ruff lint, mypy. GitHub Actions CI on every push to `main` (and on any pull request): lint, type check, unit tests on CPU. |
 | Data | Never committed. Raw data lives at a path given by an environment variable (`LASE_DATA_DIR`). A download script records checksums. |
 | Run outputs | `runs/` (gitignored). Each run stores its resolved config, git commit, seed and data manifest. |
 

@@ -2,7 +2,7 @@
 
 Rules every contributor, human or agent, follows so independently built parts fit together. Project context: [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md), [PROJECT_SCOPE.md](./PROJECT_SCOPE.md), [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md).
 
-**Changing anything here** requires a pull request that updates this file *and* every affected module in the same change.
+**Changing anything here** requires a single commit that updates this file *and* every affected module together.
 
 ---
 
@@ -13,7 +13,7 @@ Rules every contributor, human or agent, follows so independently built parts fi
 | Environment | `uv sync` creates the environment from `uv.lock`. Run everything through `uv run ...`. |
 | Dependencies | Add with `uv add <pkg>` or `uv add --dev <pkg>`. Never `pip install` into the project environment. Commit `pyproject.toml` and `uv.lock` together. |
 | Hooks | `uv run pre-commit install` once per clone. Hooks: ruff format, ruff lint, mypy, notebook-output stripping, basic file hygiene. |
-| Branches | `main` is always green. Work on `feat/...`, `fix/...`, `docs/...`, `exp/...` branches; merge through pull requests after CI passes. |
+| Branches | During initial development, commit directly to `main`. Run `uv run pre-commit run --all-files` before every push, and keep `main` green. Feature branches and pull requests are optional (e.g. for risky experiments) and may become the default later. |
 | Commits | Imperative, concise subject (`Add GNSS update`, `Fix FOG unwrap sign`). One logical change per commit. |
 | Data | Never committed. Raw data is under `$LASE_DATA_DIR` (see `.env.example`). Caches and run outputs live in gitignored directories. |
 | Third-party code | Cloned into `external/` (gitignored), never copied into `src/`. Record the upstream commit used. |
@@ -123,7 +123,7 @@ Method B (learned constants) produces the same `HeadOutputs` from learnable cons
 
 | Tier | Location | Runs | Purpose |
 |---|---|---|---|
-| Unit tests | `tests/unit/` | CI, every PR | Fast checks of individual functions: shapes, conventions, edge cases, known small examples |
+| Unit tests | `tests/unit/` | CI, every push | Fast checks of individual functions: shapes, conventions, edge cases, known small examples |
 | Validation | `tests/validation/` (marked `validation`) | Explicitly: `uv run pytest tests/validation` | Checks against independent references (simulator truth, oracle residuals, Monte Carlo, published baselines), as listed per phase in the development plan. Figures and tables go to `reports/`. |
 
 A phase is complete only when its validation checks pass, not just its unit tests.

@@ -90,7 +90,7 @@ notebooks/       exploration only
 reports/         validation reports and figures
 ```
 
-Work happens on branches and merges into `main` through pull requests after CI passes.
+During initial development, commits go directly to `main`. Run `uv run pre-commit run --all-files` before every push.
 
 ## Background material
 
