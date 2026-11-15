@@ -100,6 +100,7 @@ class SimConfig(Config):
     wheels: WheelErrors = WheelErrors()
     gps: GpsErrors = GpsErrors()
     use_real_gps_gaps: bool = True  # keep the session's natural GPS outages
+    earth_rotation: bool = True  # gyros and FOG sense the Earth rate, as real sensors do
 
 
 def load_scenario(name_or_path: str | Path) -> SimConfig:

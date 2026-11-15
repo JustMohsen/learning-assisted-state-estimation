@@ -93,12 +93,21 @@ class TruthTrajectory:
             omega_dot_b=(w_plus - w_minus) / (2 * h),
         )
 
-    def body_z_angle(self) -> BSpline:
-        """Antiderivative of body z rate (rad) as a spline in seconds since t0 (FOG truth)."""
+    def body_z_angle(self, earth_rate_w: F64 | None = None) -> BSpline:
+        """Antiderivative of the body-z inertial rate (rad), as a spline in seconds since t0.
+
+        This is what a FOG on body z senses: rotation relative to the local frame plus,
+        if ``earth_rate_w`` (NED) is given, the Earth rate projected on body z.
+        """
         grid = np.linspace(
             0.0, (self.t1_us - self.t0_us) * 1e-6, 1 + int((self.t1_us - self.t0_us) * 1e-4)
         )
-        wz = self.omega_b(self.t0_us + np.round(grid * 1e6).astype(np.int64))[:, 2]
+        tg = self.t0_us + np.round(grid * 1e6).astype(np.int64)
+        wz = self.omega_b(tg)[:, 2]
+        if earth_rate_w is not None:
+            rpy = self.att(grid)
+            C = euler_zyx_to_matrix(rpy[:, 0], rpy[:, 1], rpy[:, 2])
+            wz = wz + (C.transpose(0, 2, 1) @ earth_rate_w)[:, 2]
         spline: BSpline = make_interp_spline(grid, wz, k=3).antiderivative()
         return spline
 

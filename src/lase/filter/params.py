@@ -9,7 +9,7 @@ import torch
 from torch import Tensor
 
 from lase.data.calibration import NcltCalibration
-from lase.geometry.constants import GRAVITY_MPS2
+from lase.geometry.constants import GRAVITY_MPS2, earth_rate_ned
 from lase.utils.config import Config, load_config
 from lase.utils.paths import repo_root
 
@@ -84,6 +84,7 @@ class FilterConfig(Config):
     nonholonomic: NonholonomicConfig = NonholonomicConfig()
     gnss: GnssUpdateConfig = GnssUpdateConfig()
     use_fog: bool = True
+    earth_rotation: bool = True  # compensate the Earth rate sensed by gyro and FOG
     output_every: int = 1  # emit an estimate every n-th propagation step
 
 
@@ -105,6 +106,7 @@ class FilterParams:
     fog_sign: float
     wheel_scale: float
     gravity_w: Tensor  # (3,)
+    earth_rate_w: Tensor  # (3,) Earth rotation in NED (zeros if not compensated)
 
     @classmethod
     def build(cls, cal: NcltCalibration, cfg: FilterConfig) -> FilterParams:
@@ -121,4 +123,9 @@ class FilterParams:
             fog_sign=cal.fog_convention.angle_sign_to_ned_yaw,
             wheel_scale=float(scale),
             gravity_w=t([0.0, 0.0, GRAVITY_MPS2]),
+            earth_rate_w=t(
+                earth_rate_ned(cal.local_frame.lat_origin_deg)
+                if cfg.earth_rotation
+                else (0.0, 0.0, 0.0)
+            ),
         )

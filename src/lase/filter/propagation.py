@@ -67,15 +67,16 @@ def propagate(
     w0 = (iv.gyr0 - state.b_gyr) @ Cb.T
     w1 = (iv.gyr1 - state.b_gyr) @ Cb.T
     f = 0.5 * (f0 + f1)
-    w = 0.5 * (w0 + w1)
+    C = state.C_wb
+    w_ie_b = C.transpose(-1, -2) @ params.earth_rate_w  # Earth rate in body axes (B, 3)
+    w = 0.5 * (w0 + w1) - w_ie_b
 
     qg, qf = noise.gyr_noise_density**2, noise.fog_angle_random_walk**2
     wf = iv.fog_valid * (qg / (qg + qf))  # FOG weight on body z
-    dth_fog = params.fog_sign * iv.fog_dangle - state.b_fog[:, 0] * dt
+    dth_fog = params.fog_sign * iv.fog_dangle - state.b_fog[:, 0] * dt - w_ie_b[:, 2] * dt
     dth_z = wf * dth_fog + (1 - wf) * w[:, 2] * dt
     phi = torch.stack([w[:, 0] * dt, w[:, 1] * dt, dth_z], dim=-1)
 
-    C = state.C_wb
     E_half = so3_exp(0.5 * phi)
     C_mid = C @ E_half
     a = (C_mid @ f[..., None])[..., 0] + params.gravity_w
@@ -102,6 +103,7 @@ def propagate(
     gyro_rows = torch.stack([torch.ones_like(wf), torch.ones_like(wf), 1 - wf], dim=-1)
     G[:, :, BG] = -(gyro_rows[..., None] * Cb) * dt3
     G[:, 2, 15] = -wf * dt
+    G[:, :, TH] = -skew(w_ie_b) * dt3  # Earth-rate projection depends on attitude
     Jr = so3_right_jacobian(phi)
     Jr_half = so3_right_jacobian(0.5 * phi)
     A_mid = -C_mid @ skew(f)  # d a / d (rotation error at the midpoint)
@@ -115,7 +117,7 @@ def propagate(
     F[:, P_, V_] = F[:, P_, V_] + eye3 * dt3
     F[:, V_, :] = F[:, V_, :] + dA * dt3
     F[:, TH, :] = Jr @ G
-    F[:, TH, TH] = so3_exp(phi).transpose(-1, -2)
+    F[:, TH, TH] = so3_exp(phi).transpose(-1, -2) + (Jr @ G)[:, :, TH]
 
     # --- discrete process noise Q ---
     qa = noise.acc_noise_density**2

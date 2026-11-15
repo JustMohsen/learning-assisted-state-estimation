@@ -25,7 +25,15 @@ def so3_exp(phi: F64) -> F64:
     return out
 
 
-def strapdown(t_us: I64, acc: F64, gyr: F64, p0: F64, v0: F64, C0: F64) -> tuple[F64, F64, F64]:
+def strapdown(
+    t_us: I64,
+    acc: F64,
+    gyr: F64,
+    p0: F64,
+    v0: F64,
+    C0: F64,
+    earth_rate_w: F64 | None = None,
+) -> tuple[F64, F64, F64]:
     """Integrate IMU samples (sensor axes = body axes) in NED with constant gravity.
 
     Uses midpoint (trapezoidal) angular rate and specific force per interval, with the
@@ -41,6 +49,8 @@ def strapdown(t_us: I64, acc: F64, gyr: F64, p0: F64, v0: F64, C0: F64) -> tuple
     for k in range(n - 1):
         dt = (t_us[k + 1] - t_us[k]) * 1e-6
         w = 0.5 * (gyr[k] + gyr[k + 1])
+        if earth_rate_w is not None:  # gyros sense the Earth rate; remove it (approx. at C_k)
+            w = w - C[k].T @ earth_rate_w
         f = 0.5 * (acc[k] + acc[k + 1])
         C_mid = C[k] @ so3_exp(0.5 * w * dt)
         a = C_mid @ f + g

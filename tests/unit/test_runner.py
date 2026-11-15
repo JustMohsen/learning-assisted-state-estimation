@@ -15,6 +15,7 @@ from lase.evaluation.estimate import reference_samples
 from lase.evaluation.metrics import compute_errors, summarize
 from lase.filter.params import FilterConfig, FilterParams
 from lase.filter.runner import initial_condition_from_reference, run_filter
+from lase.geometry.constants import earth_rate_ned
 from lase.sim.config import FogErrors, GpsErrors, WheelErrors
 from lase.sim.sensors import simulate_fog, simulate_gps, simulate_imu, simulate_wheels
 from lase.sim.simulate import _reference_from_truth
@@ -35,9 +36,14 @@ def _clean_streams(wheel_scale: float = 1.0):  # type: ignore[no-untyped-def]
         jitter(3800, 23_000),
         jitter(560, 143_000),
     )
-    imu = simulate_imu(traj, t_imu, cal, _zero_imu(), rng)
+    w_ie = np.asarray(earth_rate_ned())  # real sensors sense the Earth rate; the filter removes it
+    imu = simulate_imu(traj, t_imu, cal, _zero_imu(), rng, w_ie)
     fog = simulate_fog(
-        traj, t_fog, FogErrors(angle_noise_rad=0, bias_init_radps=0, bias_rw_radps_sqrts=0), rng
+        traj,
+        t_fog,
+        FogErrors(angle_noise_rad=0, bias_init_radps=0, bias_rw_radps_sqrts=0),
+        rng,
+        w_ie,
     )
     wh = simulate_wheels(traj, t_wh, WheelErrors(speed_scale=wheel_scale, noise_mps=0), rng)
     gps = simulate_gps(

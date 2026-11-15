@@ -18,3 +18,12 @@ def normal_gravity(lat_deg: float, alt_m: float) -> float:
 
 GRAVITY_MPS2 = normal_gravity(_NCLT_LAT_DEG, _NCLT_ALT_M)
 """Local gravity magnitude at the NCLT origin (~9.8029 m/s^2), pointing +z in NED."""
+
+EARTH_RATE_RADPS = 7.292115e-5
+"""WGS-84 Earth rotation rate (rad/s)."""
+
+
+def earth_rate_ned(lat_deg: float = _NCLT_LAT_DEG) -> tuple[float, float, float]:
+    """Earth rotation vector in the local NED frame: Omega * [cos(lat), 0, -sin(lat)] (rad/s)."""
+    lat = math.radians(lat_deg)
+    return (EARTH_RATE_RADPS * math.cos(lat), 0.0, -EARTH_RATE_RADPS * math.sin(lat))

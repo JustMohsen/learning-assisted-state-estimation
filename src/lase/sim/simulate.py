@@ -18,6 +18,7 @@ from lase.data.geodesy import LocalProjection
 from lase.data.raw import F64, I64, B, make_fog, make_gps, make_imu, make_wheels
 from lase.data.reference import GraphNodes, GroundTruth, Reference
 from lase.data.session import SensorStreams, load_inputs, load_reference_for
+from lase.geometry.constants import earth_rate_ned
 from lase.geometry.euler import wrap_angle
 from lase.sim.config import SimConfig
 from lase.sim.sensors import Span, simulate_fog, simulate_gps, simulate_imu, simulate_wheels
@@ -105,8 +106,13 @@ def simulate_session(
     else:
         t_gps = np.arange(traj.t0_us, traj.t1_us, round(1e6 / 7.0), dtype=np.int64)
 
-    imu = simulate_imu(traj, t_imu, cal, config.imu, rng)
-    fog = simulate_fog(traj, t_fog, config.fog, rng)
+    w_ie = (
+        np.asarray(earth_rate_ned(cal.local_frame.lat_origin_deg))
+        if config.earth_rotation
+        else None
+    )
+    imu = simulate_imu(traj, t_imu, cal, config.imu, rng, w_ie)
+    fog = simulate_fog(traj, t_fog, config.fog, rng, w_ie)
     wh = simulate_wheels(traj, t_wh, config.wheels, rng)
     gps = simulate_gps(traj, t_gps, cal, config.gps, rng)
 

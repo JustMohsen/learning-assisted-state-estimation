@@ -60,6 +60,7 @@ def test_mean_matches_strapdown_without_fog() -> None:
         fog_sign=-1.0,
         wheel_scale=1.0,
         gravity_w=params.gravity_w,
+        earth_rate_w=torch.zeros(3, dtype=D),  # the reference strapdown ignores Earth rate
     )
     s = NavState(
         torch.zeros(1, 3, dtype=D),

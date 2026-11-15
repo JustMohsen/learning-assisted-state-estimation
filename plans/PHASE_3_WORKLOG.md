@@ -34,6 +34,7 @@ History:
 - **Tuned values (stages 1-2, 22 configurations, 138 runs):** GPS sigma 5 m with 1 Hz GPS updates (handles correlated GPS error better than sigma 3 m or 7 Hz), wheel sigma 0.15 m/s, accelerometer noise density 0.05 m/s^2/sqrt(Hz), non-holonomic constraint on. The optimum is flat: wheel 0.3 / acc 0.05-0.2 score within ~1%, but wheel sigma 0.3 gives wheel NIS 0.03-0.14 (too pessimistic) vs 0.55. Training-segment medians: position 3.1 m median, 5.7 m p95, heading 1.36 deg, velocity 0.18 m/s, outage-end error 3.2 m.
 - **Wheel-scale state stays off (finding for the user's decision):** estimating it (prior 0.02, rw 1e-5) drifted to 1.08-1.14, beyond the 1.044-1.076 the reference shows for these days, and doubled the errors (p95 13.7 vs 5.7 m), so it absorbs other model errors and is not cleanly identifiable in this baseline.
 - **GPS recovery after 300 s (stage 3):** recovery after 90 s caused both large failures (2012-02-04 p95 95 m, max 113 m; 2012-11-17 max 22 m). With 300 s (or never) no recovery triggers on the tuning sessions and those drop to p95 10 m / max 6.6 m. 300 s keeps a safety net for genuine divergence.
+- **Earth rotation compensated (modelling fix found on the validation days):** in every session the FOG-integrated heading drifted +2 to +4 deg per 10 min against the reference. The KVH FOG senses the Earth rate (Omega sin(42.3 deg) = 4.9e-5 rad/s = 1.7 deg per 10 min on the vertical), five times the datasheet FOG-bias prior, so it could not be absorbed and dragged the heading whenever GPS was weak. The filter now subtracts C_wb^T w_ie from gyro and FOG (with its attitude Jacobian; F still equals autograd to 1e-8). The simulator senses the Earth rate too (SimConfig.earth_rotation, default on), and the validation strapdown has the matching option. Transport rate and Coriolis acceleration (< 1e-4 m/s^2 at Segway speeds) are neglected.
 
 ## Steps
 
@@ -62,6 +63,7 @@ History:
 - 2026-11-15 03:19: Step 8 done: filter/experiment.py (run_session / run_many: parallel processes, modes gps/outages/nogps, segment windows, evaluate_estimate + NIS/acceptance rows).
 - 2026-11-15 04:29: Step 9 in progress: stage 1 (16 configs x 6 sessions, 47 min) and stage 2 (7 configs) done -> reports/phase3_baseline/tuning_*.csv. 2012-02-04 failure traced: a 4-minute gross GPS episode (offsets 300 -> 50 m); the filter rejected it for ~100 s, then the 90 s recovery rule inflated the covariance and accepted a fix 112 m off. Stage 3 tests recovery after 90 s / 300 s / never.
 - 2026-11-15 04:38: Step 9 done: tuned configuration written to configs/filter/baseline.yaml (GPS 5 m at 1 Hz, recovery 300 s, wheel 0.15 m/s, acc 0.05, non-holonomic on). 3 stages, 25 configurations, 156 training-segment runs.
+- 2026-11-15 04:53: First validation-day evaluation (before the fix below): 2013-01-10 median 4.7 m / p95 8.5 m / heading 1.2 deg; 2013-02-23 median 5.3 m but p95 65 m, and without GPS heading 27.5 deg (NCLT's own odometry also 27 deg there). Non-holonomic constraint essential (without it median 7-11 m, p95 210-240 m).
 
 ## Summary
 

@@ -64,9 +64,17 @@ class ImuSim:
 
 
 def simulate_imu(
-    traj: TruthTrajectory, t_us: I64, cal: NcltCalibration, err: ImuErrors, rng: np.random.Generator
+    traj: TruthTrajectory,
+    t_us: I64,
+    cal: NcltCalibration,
+    err: ImuErrors,
+    rng: np.random.Generator,
+    earth_rate_w: F64 | None = None,
 ) -> ImuSim:
-    """Specific force and angular rate at the IMU, in IMU axes, with errors."""
+    """Specific force and angular rate at the IMU, in IMU axes, with errors.
+
+    If ``earth_rate_w`` (NED, rad/s) is given, the gyro also senses the Earth rate.
+    """
     st = traj.at(t_us)
     lever = cal.sensors.imu.l_b
     C_bs = cal.sensors.imu.C_bs
@@ -76,6 +84,8 @@ def simulate_imu(
     g_w = np.array([0.0, 0.0, GRAVITY_MPS2])
     f_b = np.einsum("qji,qj->qi", st.C_wb, a_imu_w - g_w)  # C_wb^T (a - g)
     f_s = f_b @ C_bs  # C_bs^T f_b
+    if earth_rate_w is not None:
+        w = w + np.einsum("qji,j->qi", st.C_wb, earth_rate_w)  # + C_wb^T w_ie
     w_s = w @ C_bs
     acc_scale = rng.normal(0, err.acc_scale_sigma, 3) if err.acc_scale_sigma > 0 else np.zeros(3)
     gyr_scale = rng.normal(0, err.gyr_scale_sigma, 3) if err.gyr_scale_sigma > 0 else np.zeros(3)
@@ -93,11 +103,15 @@ class FogSim:
 
 
 def simulate_fog(
-    traj: TruthTrajectory, t_us: I64, err: FogErrors, rng: np.random.Generator
+    traj: TruthTrajectory,
+    t_us: I64,
+    err: FogErrors,
+    rng: np.random.Generator,
+    earth_rate_w: F64 | None = None,
 ) -> FogSim:
     """Released FOG angle: sign x (body-z angle + integrated bias + noise), wrapped to [0, 2pi)."""
     s = (t_us - traj.t0_us) * 1e-6
-    angle = traj.body_z_angle()(s)
+    angle = traj.body_z_angle(earth_rate_w)(s)
     bias = random_walk(t_us, err.bias_init_radps, err.bias_rw_radps_sqrts, 1, rng)[:, 0]
     dt = np.diff(t_us, prepend=t_us[0]) * 1e-6
     angle = angle + np.cumsum(bias * dt) + rng.normal(0, 1, len(t_us)) * err.angle_noise_rad
