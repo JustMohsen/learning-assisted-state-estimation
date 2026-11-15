@@ -94,12 +94,13 @@ def load_inputs(
     )
 
 
-def load_reference_for(date: dt.date) -> Reference:
+def load_reference_for(date: dt.date, node_match_tolerance_s: float = 0.05) -> Reference:
     """Load the reference trajectory for ``date`` (training/evaluation only)."""
     root = nclt_dir() / "raw"
     return load_reference(
         root / "ground_truth" / f"groundtruth_{date.isoformat()}.csv",
         root / "covariance" / f"cov_{date.isoformat()}.csv",
+        node_match_tolerance_s,
     )
 
 

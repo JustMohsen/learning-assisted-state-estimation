@@ -97,7 +97,10 @@ class OutageCurves:
 
 
 def outage_curves(
-    errors: ErrorSeries, spans: Sequence[Span], offsets_s: Sequence[float] | None = None
+    errors: ErrorSeries,
+    spans: Sequence[Span],
+    offsets_s: Sequence[float] | None = None,
+    sample_tolerance_s: float = 3.0,
 ) -> OutageCurves:
     """Sample horizontal error at fixed offsets after each outage start (nearest reference time)."""
     off = np.asarray(offsets_s if offsets_s is not None else [0, 5, 10, 20, 30, 45, 60, 90, 120])
@@ -111,7 +114,7 @@ def outage_curves(
         if not cands:
             return float("nan")
         c = min(cands, key=lambda c: abs(int(t[c]) - tq))
-        return float(en[c]) if abs(int(t[c]) - tq) <= 3_000_000 else float("nan")
+        return float(en[c]) if abs(int(t[c]) - tq) <= sample_tolerance_s * 1e6 else float("nan")
 
     for a, b in spans:
         dur = (b - a) * 1e-6

@@ -171,7 +171,9 @@ class Reference:
         return fwd, mask & np.isfinite(fwd)
 
 
-def load_reference(gt_path: Path, cov_path: Path) -> Reference:
+def load_reference(
+    gt_path: Path, cov_path: Path, node_match_tolerance_s: float = 0.05
+) -> Reference:
     """Load dense ground truth and graph nodes for one session."""
     gt = load_ground_truth(gt_path)
-    return Reference(gt=gt, nodes=load_graph_nodes(cov_path, gt))
+    return Reference(gt=gt, nodes=load_graph_nodes(cov_path, gt, int(node_match_tolerance_s * 1e6)))

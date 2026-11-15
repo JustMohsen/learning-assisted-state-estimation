@@ -17,13 +17,16 @@ import pandas as pd
 
 from lase.data.splits import Split, load_split
 from lase.filter.experiment import run_many
-from lase.filter.params import FilterConfig
+from lase.filter.params import FilterConfig, load_filter_config
 from lase.utils.paths import repo_root
 
 
 def configs(stage: str = "1") -> dict[str, FilterConfig]:
-    """Stage 1: coarse grid. Stage 2: extend past the stage-1 edges, plus the wheel-scale state."""
-    base = FilterConfig()
+    """Stage 1: coarse grid. Stage 2: extend past the stage-1 edges, plus the wheel-scale state.
+
+    All stages start from configs/parameters.yaml and change only the gridded values.
+    """
+    base = load_filter_config("baseline")
     out = {}
     if stage == "3":  # GPS recovery rule variants on the stage-2 winner (set below)
         best = _cfg(base, "s3", 5.0, 1.0, float(_arg(2, "0.15")), float(_arg(3, "0.05")))

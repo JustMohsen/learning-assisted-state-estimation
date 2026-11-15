@@ -75,6 +75,11 @@ def evaluate_estimate(
     natural_spans: Sequence[Span] = (),
     rpe_deltas_s: Sequence[float] = (10.0, 60.0),
     max_staleness_us: int = 200_000,
+    dense_rate_hz: float = 10.0,
+    curve_offsets_s: Sequence[float] | None = None,
+    curve_sample_tolerance_s: float = 3.0,
+    velocity_half_window_s: float = 0.05,
+    max_speed_mps: float = 5.0,
 ) -> EvaluationReport:
     """Evaluate an estimate against the reference.
 
@@ -85,8 +90,9 @@ def evaluate_estimate(
         injected_spans: GPS-withheld windows used when producing ``est`` (outage curves).
         natural_spans: Natural GPS outages (see :func:`natural_outage_spans`).
     """
-    nodes_s = reference_samples(ref, "nodes", t_window=t_window)
-    dense_s = reference_samples(ref, "dense", t_window=t_window)
+    kw = {"velocity_half_window_s": velocity_half_window_s, "max_speed_mps": max_speed_mps}
+    nodes_s = reference_samples(ref, "nodes", t_window=t_window, **kw)
+    dense_s = reference_samples(ref, "dense", dense_rate_hz, t_window=t_window, **kw)
     e_nodes = compute_errors(est, nodes_s, max_staleness_us)
     e_dense = compute_errors(est, dense_s, max_staleness_us)
     nees = None
@@ -97,8 +103,16 @@ def evaluate_estimate(
         nodes=summarize(e_nodes),
         dense=summarize(e_dense),
         rpe={d: relative_pose_error(est, dense_s, d, max_staleness_us) for d in rpe_deltas_s},
-        injected_outages=outage_curves(e_dense, injected_spans) if injected_spans else None,
-        natural_outages=outage_curves(e_dense, natural_spans) if natural_spans else None,
+        injected_outages=(
+            outage_curves(e_dense, injected_spans, curve_offsets_s, curve_sample_tolerance_s)
+            if injected_spans
+            else None
+        ),
+        natural_outages=(
+            outage_curves(e_dense, natural_spans, curve_offsets_s, curve_sample_tolerance_s)
+            if natural_spans
+            else None
+        ),
         nees_pos=nees,
         dense_errors=e_dense,
     )

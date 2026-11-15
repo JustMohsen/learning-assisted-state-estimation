@@ -1,0 +1,89 @@
+# =============================================================================
+# Project parameters: every tunable value, with what it does and where it came from.
+# =============================================================================
+# Loaded by lase.parameters.load_parameters(). Experiments override a subset with small
+# files in configs/experiments/ (deep-merged on top). Rule (CONVENTIONS.md): every value
+# we decide on is a named, commented parameter here, never a number in code.
+# Not here: measured physical facts (configs/data/nclt_calibration.yaml) and simulator
+# scenarios (configs/sim/).
+# Sources: [tuned] training-day grid search (reports/phase3_baseline/tuning_*.csv);
+# [datasheet]; [measured] Phase 1/2 data analysis; [design] engineering choice.
+
+filter:
+  name: eskf-baseline                # label used in reports
+
+  noise:                             # continuous-time process noise (propagation)
+    acc_noise_density: 0.05          # m/s^2/sqrt(Hz) accelerometer white noise incl. Segway vibration [tuned; flat optimum 0.05-0.2]
+    gyr_noise_density: 0.002         # rad/s/sqrt(Hz) MEMS gyro white noise [design, pessimistic vs datasheet]
+    fog_angle_random_walk: 2.0e-5    # rad/sqrt(s) FOG noise; KVH DSP-3000 ARW 0.0667 deg/sqrt(h) [datasheet]
+    acc_bias_rw: 1.0e-4              # m/s^2/sqrt(s) accelerometer bias random walk [design]
+    gyr_bias_rw: 1.0e-5              # rad/s/sqrt(s) gyro bias random walk [design]
+    fog_bias_rw: 1.0e-7              # rad/s/sqrt(s) FOG bias random walk [design; under investigation, R5]
+    wheel_scale_rw: 0.0              # 1/sqrt(s) wheel-scale random walk; 0 = no drift within a session [design; R6]
+
+  prior:                             # initial 1-sigma uncertainties (common initial-pose prior)
+    pos_m: 0.5                       # m initial position
+    vel_mps: 0.3                     # m/s initial velocity (from wheels)
+    att_rad: [0.02, 0.02, 0.02]      # rad initial roll, pitch, yaw
+    acc_bias_mps2: 0.1               # m/s^2 initial accelerometer bias
+    gyr_bias_radps: 0.01             # rad/s initial gyro bias
+    fog_bias_radps: 1.0e-5           # rad/s initial FOG bias; wider (5e-5, 1.5e-4) was worse [tuned]
+    wheel_scale: 0.0                 # initial wheel-scale sigma; 0 = fixed at wheel.speed_scale [design; R6]
+
+  wheel:                             # forward wheel-speed update
+    enabled: true                    # use wheel speeds
+    sigma_mps: 0.15                  # m/s measurement noise of the mean wheel speed [tuned]
+    speed_scale: null                # released speed / true speed; null = calibration value (1.054) [measured]
+    gate_prob: 0.999                 # chi-square acceptance probability for gating [design]
+
+  nonholonomic:                      # soft pseudo-measurement: axle does not slide sideways/vertically
+    enabled: true                    # on in baseline A (user decision, Phase 3 review)
+    sigma_lateral_mps: 0.1           # m/s allowed lateral axle velocity [design]
+    sigma_vertical_mps: 0.1          # m/s allowed vertical body velocity [design; to be removed/loosened, R2]
+    gate_prob: 0.999                 # chi-square acceptance probability [design]
+
+  gnss:                              # horizontal GPS position update
+    enabled: true                    # use GPS
+    sigma_m: 5.0                     # m per-axis noise, inflated for time-correlated error [tuned]
+    gate_prob: 0.999                 # chi-square acceptance probability [design]
+    skip_held: true                  # ignore repeated (held) fixes: no new information [design]
+    min_interval_s: 1.0              # s minimum spacing between GPS updates (1 Hz) [tuned]
+    recovery_after_s: 300.0          # s of continuous rejection before re-acquisition; 90 s accepted gross episodes [tuned]
+    recovery_min_rejections: 5       # consecutive rejected fixes also required before re-acquisition [design]
+    recovery_pos_sigma_m: 30.0       # m position sigma set at re-acquisition [design]
+
+  fog_handling:                      # causal FOG angle at propagation-interval boundaries
+    max_extrapolation_s: 0.05        # s; if the last FOG sample is older, the interval uses the IMU gyro only [design]
+    extrapolation_baseline_s: 0.02   # s minimum span for the extrapolation rate (samples can be 0.1 ms apart) [measured]
+
+  init:
+    start_offset_s: 1.0              # s after the first valid reference pose where runs start [design]
+
+  use_fog: true                      # fuse the FOG for body-z rotation (false = IMU gyro only)
+  earth_rotation: false              # compensate Earth rate; off: released FOG appears compensated [measured]
+  output_every: 1                    # emit an estimate every n-th IMU step
+
+data:
+  limits:                            # row validity flags (generous physical bounds, not tuning)
+    max_specific_force_mps2: 60.0    # m/s^2 accelerometer norm above this = out of range
+    max_angular_rate_radps: 10.0     # rad/s gyro axis above this = out of range
+    max_wheel_speed_mps: 5.0         # m/s wheel speed above this = out of range
+    min_gps_fix_mode: 2              # GPS fix mode below this = no fix (paper Table 7)
+  node_match_tolerance_s: 0.05       # s; graph nodes without a dense pose this close are invalid (truncated releases) [measured]
+  velocity_half_window_s: 0.05       # s half-window of the central difference for reference velocity [design]
+  max_reference_speed_mps: 5.0       # m/s reference speeds above this are masked as implausible [design]
+
+evaluation:
+  max_staleness_s: 0.2               # s; reference times with no estimate this recent count as not covered [design]
+  dense_rate_hz: 10.0                # Hz grid for dense (sensitivity) scoring, RPE and outage curves [design]
+  score_start_after_init_s: 10.0     # s after run start before scoring begins [design]
+  rpe_deltas_s: [10.0, 60.0]         # s intervals for relative pose error [design]
+  outages:
+    durations_s: [30.0, 60.0, 120.0] # s injected outage lengths (user decision: report with natural outages)
+    per_duration: 3                  # injected windows per duration per session
+    min_separation_s: 180.0          # s between windows and of healthy GPS before each [design]
+    max_natural_gap_s: 2.0           # s; candidate windows must not contain natural GPS gaps longer than this
+    earliest_start_after_init_s: 60.0  # s; no injected outage before this time after run start
+    natural_min_gap_s: 5.0           # s; GPS gaps longer than this count as natural outages
+    curve_offsets_s: [0, 5, 10, 20, 30, 45, 60, 90, 120]  # s after outage start where error is sampled
+    curve_sample_tolerance_s: 3.0    # s; nearest reference sample must be this close to an offset

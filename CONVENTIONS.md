@@ -23,7 +23,13 @@ Rules every contributor, human or agent, follows so independently built parts fi
 - **Library code** lives in `src/lase/`. **Scripts** in `scripts/` are thin command-line wrappers: parse arguments, load config, call library functions.
 - **Notebooks** are for exploration only. Anything reused moves into `src/lase/` with tests. Outputs are stripped on commit.
 - **Functional numerical core.** Filter steps are pure functions of their inputs (section 6). They do not mutate arguments, keep hidden state or read global config. Classes are used for orchestration: runners, datasets, models (`torch.nn.Module`).
-- **Configs, not constants.** Tunable values come from pydantic configs (`lase.utils.config.Config` subclasses) loaded from `configs/`. Physical constants (e.g. Earth parameters) live in one module with sources cited.
+- **Every decided value is a named, commented parameter.** Every tunable value of the estimator, data handling and evaluation lives in [configs/parameters.yaml](./configs/parameters.yaml), loaded through validated pydantic models (`lase.parameters`, `lase.utils.config.Config` subclasses). Each value has a comment: what it does, its units, and its source (tuned, datasheet, measured or design). There are no magic numbers in code. When we decide a new value, it becomes a parameter there, and `tests/unit/test_parameters.py` enforces that the file is complete and commented.
+- **Experiments override, never edit.** Variants are small files in `configs/experiments/` merged on top of `parameters.yaml`.
+- **What lives elsewhere:**
+  - measured physical facts with sources: `configs/data/nclt_calibration.yaml`;
+  - simulator scenarios: `configs/sim/`;
+  - physical constants (gravity, Earth rate), with sources cited: `lase.geometry.constants`.
+- **Exception:** analysis-only thresholds in one-off Phase 1/2 diagnostics stay as named, documented keyword arguments.
 - **Style.** ruff (line length 100) formats and lints. mypy runs in strict mode on `src/`. Every public function has type hints and a docstring stating tensor shapes, frames and units.
 - **Naming.** pep8 except for established mathematical symbols: `P`, `F`, `H`, `K`, `Q`, `R`, `C_wb` are allowed and preferred where they match the equations.
 

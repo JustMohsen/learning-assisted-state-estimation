@@ -13,7 +13,7 @@ uv run python scripts/evaluate_baseline.py baseline   # validation_* (validation
 
 ## 1. What was built
 
-An error-state Kalman filter in PyTorch (float64, batch-first; `src/lase/filter/`), configured by [configs/filter/baseline.yaml](../../configs/filter/baseline.yaml).
+An error-state Kalman filter in PyTorch (float64, batch-first; `src/lase/filter/`), configured by [configs/parameters.yaml](../../configs/parameters.yaml) (all tunable values, commented).
 
 | Part | Design |
 |---|---|

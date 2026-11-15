@@ -64,6 +64,8 @@ def reference_samples(
     which: Literal["nodes", "dense"] = "nodes",
     dense_rate_hz: float = 10.0,
     t_window: tuple[int, int] | None = None,
+    velocity_half_window_s: float = 0.05,
+    max_speed_mps: float = 5.0,
 ) -> ReferenceSamples:
     """Reference at graph nodes (primary) or on a regular dense grid (sensitivity).
 
@@ -84,7 +86,7 @@ def reference_samples(
     if t_window is not None:
         keep = (t >= t_window[0]) & (t < t_window[1])
         t, p, yaw = t[keep], p[keep], yaw[keep]
-    v, vmask = ref.velocity_w(t)
+    v, vmask = ref.velocity_w(t, int(velocity_half_window_s * 1e6), max_speed_mps)
     return ReferenceSamples(
         t_us=t, pos_ne=p[:, :2], heading=wrap_angle(yaw), vel_ne=v[:, :2], vel_valid=vmask
     )

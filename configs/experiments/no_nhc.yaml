@@ -1,0 +1,5 @@
+# Baseline without the non-holonomic constraint (scope-literal variant, for comparison).
+filter:
+  name: eskf-baseline-no-nhc  # report label
+  nonholonomic:
+    enabled: false            # constraint off

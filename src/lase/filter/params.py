@@ -11,7 +11,6 @@ from torch import Tensor
 from lase.data.calibration import NcltCalibration
 from lase.geometry.constants import GRAVITY_MPS2, earth_rate_ned
 from lase.utils.config import Config, load_config
-from lase.utils.paths import repo_root
 
 
 class ProcessNoise(Config):
@@ -71,7 +70,21 @@ class GnssUpdateConfig(Config):
     skip_held: bool = True
     recovery_after_s: float = 90.0  # inflate position covariance after this long of rejections (> most gross GPS episodes)
     recovery_pos_sigma_m: float = 30.0
+    recovery_min_rejections: int = 5  # consecutive rejections required before recovery
     min_interval_s: float = 0.0  # skip fixes closer than this to the previous GPS update
+
+
+class FogHandlingConfig(Config):
+    """Causal FOG angle interpolation/extrapolation at interval boundaries."""
+
+    max_extrapolation_s: float = 0.05  # beyond this since the last sample: no FOG for the interval
+    extrapolation_baseline_s: float = 0.02  # min time span for the extrapolation rate
+
+
+class InitConfig(Config):
+    """Run start."""
+
+    start_offset_s: float = 1.0  # start this long after the first valid reference pose
 
 
 class FilterConfig(Config):
@@ -83,6 +96,8 @@ class FilterConfig(Config):
     wheel: WheelUpdateConfig = WheelUpdateConfig()
     nonholonomic: NonholonomicConfig = NonholonomicConfig()
     gnss: GnssUpdateConfig = GnssUpdateConfig()
+    fog_handling: FogHandlingConfig = FogHandlingConfig()
+    init: InitConfig = InitConfig()
     use_fog: bool = True
     # Off: on training days compensating made heading worse (released FOG data appears to be
     # Earth-rate compensated already); kept as an option.
@@ -91,11 +106,20 @@ class FilterConfig(Config):
 
 
 def load_filter_config(name_or_path: str | Path = "baseline") -> FilterConfig:
-    """Load ``configs/filter/<name>.yaml`` (or an explicit path)."""
+    """Filter configuration from ``configs/parameters.yaml``.
+
+    ``"baseline"`` returns the parameters file as is; another bare name applies the
+    override file ``configs/experiments/<name>.yaml``; a path to a YAML file containing a
+    complete FilterConfig is loaded directly.
+    """
+    from lase.parameters import load_parameters
+
     p = Path(name_or_path)
-    if not p.suffix:
-        p = repo_root() / "configs" / "filter" / f"{name_or_path}.yaml"
-    return load_config(p, FilterConfig)
+    if p.suffix:
+        return load_config(p, FilterConfig)
+    if str(name_or_path) == "baseline":
+        return load_parameters().filter
+    return load_parameters(overrides=[str(name_or_path)]).filter
 
 
 @dataclass(frozen=True)

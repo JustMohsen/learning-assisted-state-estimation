@@ -45,9 +45,11 @@ class InitialCondition:
     rpy: F64  # (3,)
 
 
-def initial_condition_from_reference(ref: Reference, t_us: int | None = None) -> InitialCondition:
-    """Reference pose at ``t_us`` (default: first valid reference time + 1 s)."""
-    t0 = int(ref.gt.t_us[ref.gt.valid][0]) + 1_000_000 if t_us is None else t_us
+def initial_condition_from_reference(
+    ref: Reference, t_us: int | None = None, start_offset_s: float = 1.0
+) -> InitialCondition:
+    """Reference pose at ``t_us`` (default: first valid reference time + ``start_offset_s``)."""
+    t0 = int(ref.gt.t_us[ref.gt.valid][0]) + int(start_offset_s * 1e6) if t_us is None else t_us
     p, rpy = ref.pose_at(np.array([t0], dtype=np.int64))
     return InitialCondition(t0, p[0], rpy[0])
 
@@ -137,12 +139,19 @@ def _output_jacobian(C: Tensor, l_imu: Tensor) -> Tensor:
 class _FogHistory:
     """Causal access to the unwrapped FOG angle (valid samples only)."""
 
-    def __init__(self, streams: SensorStreams) -> None:
+    def __init__(
+        self,
+        streams: SensorStreams,
+        max_extrapolation_s: float = 0.05,
+        extrapolation_baseline_s: float = 0.02,
+    ) -> None:
         m = streams.fog.valid
         self.t = streams.fog.t_us[m]
         self.a = streams.fog_angle[m]
+        self.max_extrapolate_us = int(max_extrapolation_s * 1e6)
+        self.baseline_us = int(extrapolation_baseline_s * 1e6)
 
-    def angle_at(self, t_query: int, t_now: int, max_extrapolate_us: int = 50_000) -> float | None:
+    def angle_at(self, t_query: int, t_now: int) -> float | None:
         """Angle at ``t_query`` using only samples with time <= ``t_now``."""
         n_avail = int(np.searchsorted(self.t, t_now, side="right"))
         if n_avail < 2:
@@ -154,11 +163,14 @@ class _FogHistory:
             t0, t1 = self.t[j], self.t[j + 1]
             w = (t_query - t0) / (t1 - t0)
             return float(self.a[j] + w * (self.a[j + 1] - self.a[j]))
-        if t_query - self.t[j] > max_extrapolate_us:
+        if t_query - self.t[j] > self.max_extrapolate_us:
             return None
-        # Extrapolate with a rate over a >= 20 ms baseline: FOG samples can arrive ~0.1 ms
+        # Extrapolate with a rate over a minimum baseline: FOG samples can arrive ~0.1 ms
         # apart, and a two-sample rate over such a gap is wildly wrong (one-sample spikes).
-        i0 = max(int(np.searchsorted(self.t[:n_avail], self.t[j] - 20_000, side="right")) - 1, 0)
+        i0 = max(
+            int(np.searchsorted(self.t[:n_avail], self.t[j] - self.baseline_us, side="right")) - 1,
+            0,
+        )
         if i0 >= j:
             return float(self.a[j])
         rate = (self.a[j] - self.a[i0]) / (self.t[j] - self.t[i0])
@@ -179,7 +191,9 @@ def run_filter(
     neutral = HeadOutputs.neutral(1)
     learned = learned_fn or (lambda t, s: neutral)
     idx = build_event_index(streams).window(ic.t_us, t_end_us or int(streams.imu.t_us[-1]) + 1)
-    fog_hist = _FogHistory(streams)
+    fog_hist = _FogHistory(
+        streams, cfg.fog_handling.max_extrapolation_s, cfg.fog_handling.extrapolation_baseline_s
+    )
 
     imu, wh, gps = streams.imu, streams.wheels, streams.gps
     held_bit = np.uint16(RowFlag.GPS_HELD)
@@ -237,7 +251,10 @@ def run_filter(
                 last_gnss_accept, gnss_rejects = t, 0
             else:
                 gnss_rejects += 1
-                if (t - last_gnss_accept) > cfg.gnss.recovery_after_s * 1e6 and gnss_rejects >= 5:
+                if (
+                    (t - last_gnss_accept) > cfg.gnss.recovery_after_s * 1e6
+                    and gnss_rejects >= cfg.gnss.recovery_min_rejections
+                ):
                     # re-acquisition: inflate position uncertainty, then retry this fix
                     Pm = Pm.clone()
                     Pm[:, P_, :] = 0.0
