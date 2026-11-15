@@ -105,7 +105,7 @@ The prototype implemented sections 2–3 and part of section 6. What it showed:
 
 ### Decisions to make together
 
-1. Wheel speed scale: fixed (1.054 training median), estimated as a slow state, or left to learning.
+1. ~~Wheel speed scale~~ **Decided (Phase 1 review):** estimate it as a slow state, initialised from the previous session's final estimate by date (first session 1.0).
 2. Correlated GPS error: add a 2-D Gauss–Markov GPS error state, or handle it in R (inflation or decimation).
 3. Slip robustness in the baseline: chi-square gating only, or robust variance inflation and bias protection.
 4. Exact-time update scheme (above): adopt?

@@ -68,6 +68,16 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 - 2026-11-15 01:38: Step 11 done: crosscheck.py + scripts/validate_phase1.py + tests/validation/test_phase1.py (17 pass). V1 GPS median 2.9-5.6 m, inlier rotation <=0.32 deg, scale <=0.53%. V2 IMU scale ~+0.998, FOG scale ~-0.998 (sign reversed), lags within ~2.5 ms. V3 wheel scale 1.044-1.085 drifting upward over the year. V4 track width R2 0.96-0.99. V5 integrity passes.
 - 2026-11-15 01:38: Step 12 done: reports/phase1_audit/README.md (results, answers to open questions, implications); README status updated to Phase 1 complete; local_data README documents scripted download; Phase 1 plan links to outcome.
 
+## Review outcome (15 November 2026)
+
+**Accepted by the user as complete.** Decisions:
+- **Wheel scale:** estimate as a slow state in the Phase 3 baseline, initialised from the previous session's final estimate by date (first session: 1.0).
+- **Split:** keep the agreed 22/2/3 split.
+- **GPS gating:** robust gating agreed.
+- **Headline metric:** decided in the Phase 2 review.
+
+See [REVIEW_PHASES.md](./REVIEW_PHASES.md), section 4a. Clarification: "training median" = median of the per-session wheel-speed/reference-speed ratios over the 22 training-split sessions (no machine learning involved).
+
 ## Summary
 
 **Phase 1 is complete** (15 November 2026, one overnight session). All 12 steps are done; step 9 (Parquet cache) was evaluated and deliberately deferred.

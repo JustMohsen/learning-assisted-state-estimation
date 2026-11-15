@@ -74,16 +74,16 @@
 | Natural outages (84; median 122 s, max 837 s), oracle-anchored odometry, median | 2.6 m at 120 s, 4.6 m at 300 s |
 | Holding the last GPS fix at the start of a natural outage | already 46 m off: last fixes before going indoors are corrupted |
 
-## 4. Decisions needed from you
+## 4. Decisions on Phases 1–2 (all resolved in the review; details in 4a)
 
-| # | Question | My recommendation |
+| # | Question | Outcome |
 |---|---|---|
-| 1 | **[needs you] Wheel speed scale:** the scope fixes it in the pilot, but it is 1.044–1.085 and drifts | Estimate it as a slow state in the analytical baseline (cheap, physical, fair to all methods); keep the learned wheel residual for fast effects |
-| 2 | **[needs you] Validation volume:** 97 min, ~80 of them from one day | Keep the agreed split; if checkpoint selection proves noisy, add cross-validation over training days rather than changing the split |
-| 3 | **[needs you] Headline metric** | Keep the scope's RMSE at graph nodes, and always show median and p95 next to it (outliers dominate RMSE) |
-| 4 | **Simulator trajectory trade-off** (realistic: 1 Hz / 5 Hz cutoffs) | Accept for now. If simulation must reproduce roll dynamics, build a physically coupled Segway trajectory model (rolling about the contact points). |
-| 5 | **Outage test design:** injected 30/60/120 s vs natural ~2–14 min | Report both. Consider adding a 300 s injected duration to match the natural ones. |
-| ~~6~~ | ~~Separate noise for GPS mode-2 fixes~~ | **Answered by data:** accuracy is nearly equal (2.94 vs 2.78 m) and modes alternate per fix, so no separate noise is needed |
+| 1 | Wheel speed scale | **Decided:** estimate it as a slow state in the baseline. Initialise from the previous session's final estimate by date; the first session starts at 1.0 (implemented in Phase 3). |
+| 2 | Validation volume | **Decided:** keep the agreed 22/2/3 split |
+| 3 | Headline metric | **Decided:** position RMSE at graph nodes as the headline, always with median and p95 alongside |
+| 4 | Simulator trajectory trade-off | **Decided:** reproduce the real accelerations (position/roll/pitch 1 Hz, yaw 5 Hz). The simulator is mainly a sanity-check and testing tool. |
+| 5 | Outage test design | **Decided:** report both injected (30/60/120 s) and natural outages; no extra injected durations |
+| 6 | Separate noise for GPS mode-2 fixes | Answered by data: not needed |
 
 ## 4a. Decisions from the review discussion
 
@@ -93,11 +93,23 @@
 |---|---|---|
 | 1 | Wheel speed scale | **Estimate it as a slow state** in the baseline (Phase 3). Initialise each session from the **final estimate of the previous session by date**; the first session (2012-01-08) starts at 1.0. To settle in Phase 3: initial uncertainty (larger for the first session, growing with time since the last run), a stored per-date chain usable by Phase 4, and diagnosis of why the prototype's wheel-scale state drifted to 1.08–1.14. |
 | 2 | Validation volume | **Keep the agreed 22/2/3 split.** |
-| 3 | Headline metric | Deferred to the Phase 3 discussion. |
+| 3 | Headline metric | Decided in the Phase 2 discussion (below). |
 | – | GPS gating | Robust gating agreed. |
-| – | Reference trust | Clarified: graph nodes (~5 m apart) come from multi-session LiDAR scan matching + RTK + odometry (mostly independent of our sensors; ~8 cm σ). Dense poses between nodes are interpolated with NCLT's wheel+FOG odometry (our sensor family). Primary scoring stays at graph nodes. Proposed: add node-only drift (RPE) so short-window metrics are also LiDAR/RTK-anchored. |
+| – | Reference trust | Clarified: graph nodes (~5 m apart) come from multi-session LiDAR scan matching + RTK + odometry (mostly independent of our sensors; ~8 cm σ). Dense poses between nodes are interpolated with NCLT's wheel+FOG odometry (our sensor family). Primary scoring stays at graph nodes; dense-reference metrics (short-window drift, velocity) are treated as indicative. Optional follow-up, not yet approved: node-only drift (RPE) so short-window metrics are also LiDAR/RTK-anchored. |
 
-## 5. Phase 3: analytical baseline (complete; review after Phases 1–2)
+**Phase 1: accepted by the user as complete (15 November 2026).**
+
+### Phase 2 (15 November 2026)
+
+| # | Topic | User decision / outcome |
+|---|---|---|
+| 3 | Headline metric | **Position RMSE at graph nodes is the headline, always reported with median and p95** (GPS outliers dominate RMSE) |
+| 4 | Simulator trajectory trade-off | **Reproduce the real accelerations** (`realistic`: position/roll/pitch 1 Hz, yaw 5 Hz; roll dynamics are under-represented). The simulator is mainly a sanity-check and testing tool, not a claim of full realism. |
+| 5 | Outage test design | **Report both** injected (30/60/120 s) and natural outages |
+
+**Phase 2: accepted by the user as complete (15 November 2026).**
+
+## 5. Phase 3: analytical baseline (complete; under review)
 
 **What exists:**
 - An error-state Kalman filter in PyTorch, verified against independent references:
@@ -125,7 +137,7 @@
 | # | Question | Evidence | My recommendation |
 |---|---|---|---|
 | 7 | **[needs you] Soft non-holonomic constraint in baseline A.** The scope has the lateral no-slip constraint as stage 3 and starts the baseline without it. | Without it: p95 210–240 m, drift ~85 m per 60 s, one training session diverged to km. With it: p95 8.5 m (most days), drift 2–3 m per 60 s. | Include it in A (analytically, fixed sigma), and keep stage 3 as *learned trust* in it |
-| 8 | **[needs you] Wheel scale** (question 1 above) | As an estimated state it drifted to 1.08–1.14 and doubled errors; fixed 1.054 works | Keep fixed for A; revisit as a learned/calibration family later |
+| 8 | Wheel scale: **decided in the Phase 1 review** (slow state, chained initialisation from the previous session; first session 1.0) | The prototype state (init 1.054, prior 0.02) drifted to 1.08–1.14 and doubled errors | Implement the chained initialisation, then diagnose the drift (what error it absorbs) before relying on it |
 | 9 | GPS re-acquisition after outages (open problem 1) | 2013-02-23: 64 m jump, then ~6 min rejecting good GPS | Require several mutually consistent fixes after an outage before accepting; consider robust GPS updates |
 | 10 | Correlated GPS error / overconfidence (NEES ≫ 2) | 1 Hz + 5 m helps accuracy but not consistency | Leave to the learned GPS multipliers (Phase 5), or add a 2-state GPS error model to A. Discuss. |
 | 11 | Unexplained FOG drift (+2–4° per 10 min; 27° on 2013-02-23) | Not Earth rate (wrong sign); wider bias prior hurt | Investigate together (FOG documentation, pitch geometry, reference) before Phase 4 |
@@ -133,6 +145,6 @@
 
 ## 6. Suggested order for the discussion
 
-1. Phases 1–2: questions 1–5 and the two reports' headline tables.
-2. Phase 3: questions 7–11, using the Phase 3 report.
+1. ~~Phases 1–2: questions 1–5 and the two reports' headline tables.~~ Done; both accepted (section 4a).
+2. Phase 3: questions 7, 9–12 (8 decided), using the Phase 3 report.
 3. Then plan Phase 4 together (not started).

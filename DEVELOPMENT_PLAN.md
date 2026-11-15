@@ -126,7 +126,7 @@ learning-assisted-state-estimation/
 
 **Goal:** every sensor stream loaded, converted and placed correctly in time and space, with its quirks understood across all sessions.
 
-**Detailed plan:** [plans/PHASE_1_DATA_FOUNDATION.md](./plans/PHASE_1_DATA_FOUNDATION.md).
+**Detailed plan:** [plans/PHASE_1_DATA_FOUNDATION.md](./plans/PHASE_1_DATA_FOUNDATION.md). **Status: complete and accepted (15 November 2026)**; [report](./reports/phase1_audit/README.md).
 
 **Parts:**
 - Download and checksum the sessions; split manifest (22/2/3 days) as a config file.
@@ -156,7 +156,7 @@ Existing detail to build on: [research/nclt-sensors-and-state.md](./research/ncl
 
 **Goal:** realistic synthetic sensor data with **known truth** for every quantity the filter estimates or the network learns.
 
-**Detailed plan (2a and 2b):** [plans/PHASE_2_SIM_EVAL.md](./plans/PHASE_2_SIM_EVAL.md).
+**Detailed plan (2a and 2b):** [plans/PHASE_2_SIM_EVAL.md](./plans/PHASE_2_SIM_EVAL.md). **Status: complete and accepted (15 November 2026)**; [report](./reports/phase2_eval/README.md). The simulator is mainly a sanity-check and testing tool.
 
 **Approach:** take real NCLT reference trajectories, which give realistic motion, and generate sensor readings from them by differentiation and the measurement models. Then inject controlled errors:
 - IMU and FOG biases (constant and drifting), scale errors, white noise;
@@ -177,7 +177,7 @@ Existing detail to build on: [research/nclt-sensors-and-state.md](./research/ncl
 **Goal:** one scoring path used by every method and every phase.
 
 **Parts:**
-- Metrics: horizontal position RMSE, wrapped heading RMSE and derived velocity RMSE, per day and overall. Drift over fixed intervals.
+- Metrics: headline horizontal position RMSE at graph nodes, always with median and p95; wrapped heading RMSE and derived velocity RMSE, per day and overall. Drift over fixed intervals.
 - Graph-node scoring, with dense-reference scoring as a sensitivity check.
 - GPS-outage injection: withhold GPS for 30 / 60 / 120 s windows at many start points. Error growth curves.
 - Consistency: NIS (innovation) statistics, coverage, rejection counts.
@@ -199,7 +199,7 @@ Existing detail to build on: [research/nclt-sensors-and-state.md](./research/ncl
 
 **Goal:** a correct, consistent, fairly tuned error-state Kalman filter using IMU, FOG, wheels and GPS. Everything later depends on this phase.
 
-**Detailed plan:** [plans/PHASE_3_BASELINE.md](./plans/PHASE_3_BASELINE.md).
+**Detailed plan:** [plans/PHASE_3_BASELINE.md](./plans/PHASE_3_BASELINE.md). **Status: complete, under review**; [report](./reports/phase3_baseline/README.md). Wheel scale is a slow state initialised from the previous session (user decision).
 
 **Parts:**
 - Propagation: IMU and FOG fusion, midpoint integration, quaternion update, covariance prediction, Q discretisation.
@@ -285,7 +285,7 @@ These follow the scope's investigation order:
 1. Process-noise adaptation.
 2. Soft lateral no-slip constraint with learned trust.
 3. FOG bias and noise adaptation.
-4. Calibration terms: wheel scale, then gyro and accelerometer scale factors.
+4. Calibration terms: gyro and accelerometer scale factors (wheel scale is part of the baseline by user decision).
 
 Each one gets:
 - a simulation test with injected truth for its target;

@@ -177,7 +177,7 @@ Logged rates are from one session and are irregular. The estimator uses real tim
 
 NCLT's reference is a 6-DOF pose from offline multi-session SLAM using LiDAR, RTK GPS and odometry. It is far better than our sensors, but **not independent of them**: odometry (wheels/IMU/FOG) helps fill in between SLAM graph nodes. To limit this:
 
-- primary scoring uses the SLAM graph-node poses, with dense-pose results reported as a sensitivity check;
+- primary scoring uses the SLAM graph-node poses (anchored by LiDAR scan matching and RTK GPS, mostly independent of our sensors), with dense-pose results reported as a sensitivity check. Dense poses between nodes (~5 m / 3.6 s apart) are interpolated with NCLT's wheel+FOG odometry, so short-window and velocity metrics are indicative only;
 - velocity "truth" is derived from reference pose, with quality control;
 - tiny differences between methods are not over-interpreted.
 
@@ -343,13 +343,13 @@ flowchart LR
 2. **Process-noise adaptation.**
 3. **Soft lateral no-slip constraint:** a "doesn't move sideways" pseudo-measurement with learned trust. Likely valuable during GPS outages.
 4. **FOG bias/noise adaptation.**
-5. **Calibration terms:** wheel scale, then gyro/accelerometer scale factors where identifiable.
+5. **Calibration terms:** gyro/accelerometer scale factors where identifiable. (Wheel scale moved into the baseline: estimated as a slow state, initialised from the previous session's final estimate by date; user decision, Phase 1 review.)
 
 Later stages proceed only if the earlier ones are sound. Negative findings are kept and reported.
 
 ## 9. Evaluation
 
-- **Accuracy:** horizontal position RMSE, wrapped heading RMSE and derived velocity RMSE, per test day and overall. Drift over fixed intervals; error growth during outages. No fitting or aligning of the test trajectory to the reference for primary metrics.
+- **Accuracy:** **headline: horizontal position RMSE at graph nodes, always reported with the median and 95th percentile** (consumer-GPS outliers dominate RMSE); also wrapped heading RMSE and derived velocity RMSE, per test day and overall. GPS-outage results are reported for both injected (30/60/120 s) and natural outages. Drift over fixed intervals; error growth during outages. No fitting or aligning of the test trajectory to the reference for primary metrics.
 - **Consistency:** innovation statistics and coverage (does the stated uncertainty match actual errors?). Do learned variances behave like real sensor noise, or just like arbitrary weights?
 - **Robustness:** failures, resets, rejected measurements and recovery after outages. Failed intervals stay in the accounting.
 - **Cost:** runtime per step and memory, compared with the classical filter.
@@ -398,4 +398,9 @@ These are expectations, not results:
 
 ## 12. Status
 
-Scope agreed on 14 November 2026. No code, data pipeline, trained model or results exist yet. Sensor-format observations above come from a limited audit of one session and must be confirmed across sessions.
+Scope agreed on 14 November 2026.
+- Phases 1 (data foundation) and 2 (simulator + evaluation harness) are complete and accepted (15 November 2026).
+- Phase 3 (analytical baseline) is complete and under review.
+- No learned model or Phase 4+ work yet.
+
+Decisions from the reviews are in [plans/REVIEW_PHASES.md](./plans/REVIEW_PHASES.md).

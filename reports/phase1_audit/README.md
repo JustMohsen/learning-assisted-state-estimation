@@ -1,6 +1,6 @@
 # Phase 1 Report: Data Audit and Cross-Sensor Validation
 
-*Generated 15 November 2026 from all 27 NCLT sessions. Plan: [PHASE_1_DATA_FOUNDATION.md](../../plans/PHASE_1_DATA_FOUNDATION.md). Execution log and decisions: [PHASE_1_WORKLOG.md](../../plans/PHASE_1_WORKLOG.md).*
+*Generated 15 November 2026 from all 27 NCLT sessions. **Accepted by the user (15 November 2026).** Plan: [PHASE_1_DATA_FOUNDATION.md](../../plans/PHASE_1_DATA_FOUNDATION.md). Execution log and decisions: [PHASE_1_WORKLOG.md](../../plans/PHASE_1_WORKLOG.md).*
 
 Reproduce:
 
@@ -25,7 +25,7 @@ uv run pytest tests/validation                       # pass/fail checks V1-V5
 
 ## Headline results
 
-**The data is clean and consistent, and every frame, sign, timing and scale check passes.** Values marked *estimated* are now recorded in [configs/data/nclt_calibration.yaml](../../configs/data/nclt_calibration.yaml).
+**The data is clean and consistent, and every frame, sign, timing and scale check passes.** Values marked *estimated* are now recorded in [configs/data/nclt_calibration.yaml](../../configs/data/nclt_calibration.yaml). "Training median" below means the median of the per-session values over the 22 training-split sessions (no machine learning involved).
 
 | Check | Result (27 sessions) | Status |
 |---|---|---|

@@ -72,6 +72,15 @@ Execution log for [PHASE_2_SIM_EVAL.md](./PHASE_2_SIM_EVAL.md). Run rules: [AUTO
 - 2026-11-15 02:39: Finding: 84 natural GPS outages (> 5 s) across sessions, median 122 s, p90 218 s, max 837 s, much longer than the injected 30-120 s windows. GPS-hold is already 46 m off at their start (last fixes before going indoors are multipath-corrupted). Oracle-anchored odometry: 0.26 / 2.6 / 4.6 m median at 10 / 120 / 300 s.
 - 2026-11-15 02:41: Step 14 done: Phase 2 report hardening section, plans/REVIEW_PHASES.md (Phases 1-2 decisions, findings, consolidated questions with recommendations, Phase 3 draft decisions), README status.
 
+## Review outcome (15 November 2026)
+
+**Accepted by the user as complete.** Decisions:
+- **Headline metric:** position RMSE at graph nodes, always with median and p95.
+- **Realistic scenario:** reproduce the real accelerations (1 Hz / 5 Hz); the simulator is mainly a sanity-check and testing tool.
+- **Outages:** report both injected and natural outages.
+
+See [REVIEW_PHASES.md](./REVIEW_PHASES.md), section 4a.
+
 ## Summary
 
 **Phase 2 is complete and hardened** (15 November 2026, overnight). All 14 steps are done (9 planned + 5 hardening).

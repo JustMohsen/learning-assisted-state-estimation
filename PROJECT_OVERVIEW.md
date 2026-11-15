@@ -126,4 +126,7 @@ Cameras and vision; LiDAR or RTK GPS as inputs; maps and loop closure; replacing
 
 ## Status
 
-Scope agreed. No code, trained model or results yet.
+Scope agreed.
+- Phases 1–2 (data, simulator, evaluation harness) are complete and accepted.
+- Phase 3 (analytical baseline filter) is complete and under review.
+- No learned model yet.

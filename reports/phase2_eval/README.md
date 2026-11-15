@@ -1,6 +1,6 @@
 # Phase 2 Report: Simulator and Evaluation Harness
 
-*15 November 2026. Plan: [PHASE_2_SIM_EVAL.md](../../plans/PHASE_2_SIM_EVAL.md). Execution log and decisions: [PHASE_2_WORKLOG.md](../../plans/PHASE_2_WORKLOG.md).*
+*15 November 2026. **Accepted by the user (15 November 2026).** Headline metric: position RMSE at graph nodes, always with median and p95; outages reported both injected and natural. Plan: [PHASE_2_SIM_EVAL.md](../../plans/PHASE_2_SIM_EVAL.md). Execution log and decisions: [PHASE_2_WORKLOG.md](../../plans/PHASE_2_WORKLOG.md).*
 
 Reproduce:
 
