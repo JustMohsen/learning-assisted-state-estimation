@@ -49,6 +49,18 @@ History:
 - **Encoder pitch-rate term kept (2x2 test on 6 training sessions; reports/phase3_baseline/wheel_model_ab.csv):** velocity error -15% (0.15 vs 0.18 m/s), wheel NIS 0.34-0.40 vs 0.54-0.62 (the model explains more of the measurement), 60 s drift -12%, outage-end error slightly lower; median position unchanged.
 - **Vertical constraint reworked:** removing the body-frame vertical constraint helped long outages (120 s error 3.7-4.2 vs 5.6-5.7 m, mean) but hurt heading (1.53 vs 1.37 deg) and 60 s drift (2.2 vs 1.8 m), so it carries useful information in a biased form. New option nonholonomic.vertical_mode = off | body | level, where 'level' constrains the world-vertical axle velocity (pitch-independent; slopes within sigma). R7b tests lateral sigma x vertical off/level.
 
+- **Phase 3 review decisions (15 November 2026, evening; user):**
+  - wheel scale fixed per session from a **linear trend in date** fitted on the 22 training days (1.04409 + 0.03268/yr from 2012-01-01, residual 0.0044; `scripts/fit_wheel_scale_trend.py`; validation days within 0.4%), held as a **Schmidt consider state** (never updated; sigma 0.0044 carried in the covariance);
+  - FOG bias prior 1e-4 rad/s, random walk 1e-6 rad/s/sqrt(s) (confirmed);
+  - **white GPS model** kept (sigma 5 m, 1 Hz); GPS error states stay available, off;
+  - GPS re-acquisition thresholds kept as they are (validation days are the check);
+  - final evaluation scope locked (R9);
+  - inactive options kept in the code, off by default: wheel-scale chain, GPS error states, losing vertical modes;
+  - `phase3-prototype` branch deleted (content already in main);
+  - vertical constraint: new `grade` mode (estimated terrain gradient, 2 states, N_ERR 21) because the user does not want a flat-ground assumption; R7b decides;
+  - left/right wheel yaw rate: **not used** (measured: wheel turn-rate noise ~0.03 rad/s, 1,500x the FOG; left/right scale difference +0.75 to +0.99%); suggested to Phase 4/5 as a network input (slip indicator) instead;
+  - no kinetics: NCLT has no motor torque/current/command data.
+
 ## Steps
 
 - [x] 1. Torch SO(3)/quaternion utilities + tests
@@ -70,8 +82,18 @@ History:
 - [x] R3. GPS re-acquisition: require N mutually consistent fixes after an outage (parameters)
 - [x] R4. GPS error states (2-D Gauss-Markov, fitted values) for correlated GPS error
 - [x] R5. FOG investigation (warm-up, season, pitch/roll correlation, KVH documentation), then a fitted FOG bias model
-- [ ] R6. Wheel-scale test: fixed 1.054 vs chained slow state (previous session's final estimate; first session 1.0), on the corrected model
-- [ ] R7. Retune on training days; re-evaluate on validation days; update report and review notes
+- [x] R6. Wheel-scale test: fixed 1.054 vs chained slow state (previous session's final estimate; first session 1.0), on the corrected model. Shortened to 3 training days (user request): the chain converged 2-4% away from the reference-measured scale with ~20x overconfident sigma and worse position (median 4.57 vs 2.62 m). Decision: fixed scale from a date trend, as a consider state (below).
+- [x] R7a. GPS model x FOG bias grid (6 training days): realistic FOG bias (prior 1e-4, random walk 1e-6) adopted; Gauss-Markov GPS error states much worse on real data (dead reckoning overconfident, so slow drift is absorbed by the GPS-error state); white GPS model kept (user decision).
+- [ ] R7b. Vertical mode (off / level / grade) x lateral sigma (0.05 / 0.1 / 0.2) on 6 training days (running).
+- [ ] Pilot baseline: freeze the current configuration (git tag `baseline-a-pilot`) and evaluate it on the validation days, as the comparison point for the quick Phase 4 pilot (user request).
+
+### Open work (after the Phase 4 pilot)
+
+- [ ] R8. **Consistency (overconfidence) fix.** Position NEES ~60 (ideal 2). Causes: correlated GPS error treated as independent, and dead-reckoning errors missing from the model. Order (user decision):
+  1. honest dead reckoning first, regardless of accuracy: GPS-free runs from reference starts (`scripts/dr_consistency.py`), position/heading NEES and along/cross-track normalised errors vs time; tune the consider wheel-scale sigma, wheel sigma, FOG bias random walk and IMU noise until they stay at their ideal values;
+  2. then the GPS side on top: current white model vs correlation-aware noise per fix (`sigma^2 = sigma_white^2 + sigma_corr^2 (1+rho)/(1-rho)`, rho = exp(-dt/tau) from the time since the last used fix; the user's proposal, Phase 2 fitted values) vs the Gauss-Markov error states.
+  Goal: accuracy and consistency improving together through a correct model structure, not by inflating one noise knob.
+- [ ] R9. **Final evaluation** (scope locked by the user): both validation days in all modes (all sensors, no GPS, without the lateral constraint, comparison methods) and all 22 training days as full sessions (how often GPS failures occur); update the Phase 3 report, REVIEW_PHASES section 5 and README; Phase 3 acceptance.
 
 ## Questions for the user
 
@@ -102,6 +124,11 @@ History:
 - 2026-11-15 16:34: 2x2 wheel-model test done (24 runs, 32 min, Earth-rate compensation off at launch; within-test comparison unaffected).
 - 2026-11-15 16:40: R6 crashed a second time (~1 h lost): long-running workers re-read configs/parameters.yaml at each session and rejected the new vertical_mode key their already-loaded code did not know. Fixed: run_many/run_chain load the parameters once at submission and pass the snapshot to every job (the YAML is never re-read during a run, which also protects jobs from edits by the parallel Phase 4 conversation); chains append each finished session to a partial CSV.
 - 2026-11-15 16:49: Discussed vertical kinematics with the user: relative to the axle, pitching gives no body-vertical motion (omega x l along body x for the 0.71 m height) and a world-vertical IMU motion linear in pitch rate (~0.11 q + 0.71 q sin(pitch)); the axle itself moves along the ground, so its body-z velocity is V sin(pitch) and its world-vertical velocity is ~0. 'level' constrains axle world-vertical velocity (equivalently IMU world-vertical = pitch-rate term); 'body' is the user's formulation. R7b now tests off / body / level x lateral sigma 0.05 / 0.1 / 0.2 (9 configurations) so the data decides.
+
+- 2026-11-15 17:20-17:40: R6 stopped after 3 training days (user request); fixed-scale runs for the same days added; partial CSV columns repaired (incremental-save bug, fixed).
+- 2026-11-15 17:55: R7a done (60 runs). GPS error-state diagnosis on 2012-08-04: the error state reached 14 m (5.7 sigma) while position error reached ~12 m, half along- and half cross-track: dead-reckoning drift absorbed as "GPS error"; not a code bug.
+- 2026-11-15 18:00-18:25: decisions above locked; date-trend wheel scale, consider state and `scripts/dr_consistency.py` implemented and tested; R7b started on the R7a winner.
+- 2026-11-15 18:30: user asked for a quick Phase 4 pilot (2-3 h) against a frozen pilot baseline; R8 and R9 moved to open work after the pilot; CPU kept free for the pilot.
 
 ## Summary
 

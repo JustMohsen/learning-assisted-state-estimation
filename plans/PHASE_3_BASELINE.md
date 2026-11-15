@@ -1,6 +1,6 @@
 # Phase 3 Plan: Analytical Baseline (Method A)
 
-*Detailed plan for Phase 3 of [DEVELOPMENT_PLAN.md](../DEVELOPMENT_PLAN.md). **Status: COMPLETE, pending review** ([report](../reports/phase3_baseline/README.md)). Design choices remain proposals for review. Builds on the Phase 1 data foundation and the Phase 2 simulator and harness. The prototype from branch `phase3-prototype` has been restored onto `main`; its lessons are in section 7.*
+*Detailed plan for Phase 3 of [DEVELOPMENT_PLAN.md](../DEVELOPMENT_PLAN.md). **Status: revision in progress** ([report](../reports/phase3_baseline/README.md); revision steps and decisions in the [worklog](./PHASE_3_WORKLOG.md)). A frozen pilot baseline (git tag `baseline-a-pilot`) serves the quick Phase 4 pilot; the consistency fix and the final evaluation follow (section 4, items 9-10). Builds on the Phase 1 data foundation and the Phase 2 simulator and harness. The prototype from branch `phase3-prototype` has been restored onto `main`; its lessons are in section 7.*
 
 ## 1. Goal and exit criterion
 
@@ -71,6 +71,8 @@ A correct, consistent, fairly tuned **error-state Kalman filter (ESKF)** using I
 6. Simulation validation: clean (tracks truth), nominal (bias convergence, NEES), slip, gps_degraded.
 7. Real-data validation: oracle residuals (empirical R), NIS, comparison with GPS and odometry baselines, injected outages.
 8. Tuning Q/R on training days; validation-day scores; report.
+9. **Open, after the Phase 4 pilot: consistency (overconfidence) fix (R8).** Position NEES ~60 against the ideal 2. First make dead reckoning honest (GPS-free runs from reference starts, `scripts/dr_consistency.py`; tune the consider wheel-scale sigma, wheel sigma, FOG bias random walk, IMU noise until normalised errors stay at their ideal values), then the GPS side on top (white vs correlation-aware noise per fix vs Gauss-Markov error states). Accuracy and consistency should improve together through a correct model structure.
+10. **Open: final evaluation (R9; scope locked).** Both validation days in all modes and all 22 training days as full sessions; final report; Phase 3 acceptance.
 
 ## 5. Compute
 

@@ -114,3 +114,61 @@ evaluation:
     natural_min_gap_s: 5.0           # s; GPS gaps longer than this count as natural outages
     curve_offsets_s: [0, 5, 10, 20, 30, 45, 60, 90, 120]  # s after outage start where error is sampled
     curve_sample_tolerance_s: 3.0    # s; nearest reference sample must be this close to an offset
+
+training:                            # method B: learned noise and constants (Phase 4; plans/PHASE_4_TRAINING.md). Anchors = the filter values above (baseline A)
+  device: cpu                        # the filter needs float64; Apple MPS has none (D3) [design]
+  dtype: float64                     # filter precision during training; float32 only as a gated experiment (plan section 5) [design]
+  batch_size: 64                     # chunks stepped in parallel by the batched masked runner; 32-128, set from the speed measurement [design]
+  seeds_dev: [0]                     # seeds during development (D6) [design]
+  seeds_report: [0, 1, 2]            # seeds for reported comparisons (D6) [design]
+
+  windows:                           # truncated backpropagation (D3)
+    burn_in_s: 20.0                  # s run without gradient from A's cached state/covariance so the state adapts to B's values (user decision) [design]
+    loss_window_s: 10.0              # s window with backpropagation and loss (user decision) [design]
+    carry_state: true                # continue chunks chronologically, state carried with gradients detached [design]
+
+  optimizer:                         # D6
+    name: adamw                      # optimiser on the deviation parameters [design]
+    lr: 1.0e-2                       # peak learning rate (user decision: start larger) [design]
+    lr_final: 1.0e-4                 # learning rate at the end of the cosine decay [design]
+    warmup_steps: 20                 # linear warm-up steps from 0 to lr [design]
+    schedule: cosine                 # decay after warm-up [design]
+    weight_decay: 0.0                # none: the anchor penalty already pulls deviations to 0 [design]
+    grad_clip_norm: 1.0              # global gradient-norm clip [design]
+
+  early_stopping:                    # validation-day full replays (D6)
+    max_steps: 2000                  # optimiser steps at most; revisit after the speed measurement [design]
+    val_every_steps: 100             # steps between validation replays [design]
+    patience: 5                      # validation replays without improvement before stopping [design]
+
+  loss:                              # loss = (1 - alpha) * task + alpha * innovation NLL + anchor penalty (D2)
+    innovation_nll_weight: 0.0       # alpha; 0 = task loss only (user decision: start fully on the normalised error) [design]
+    huber_delta: 2.0                 # Huber threshold in normalised units: larger errors count linearly (robust to rare GPS-driven errors) [design]
+    pos_scale_m: 3.0                 # m normalisation of horizontal position error at graph nodes (A's median ~3 m) [measured, Phase 3]
+    heading_scale_rad: 0.03          # rad normalisation of wrapped heading error (A's ~1.8 deg) [measured, Phase 3]
+    vel_scale_mps: 0.2               # m/s normalisation of horizontal velocity error vs the dense reference (A's RMSE ~0.2) [measured, Phase 3]
+    pos_weight: 1.0                  # task-loss channel weight, position [design]
+    heading_weight: 1.0              # task-loss channel weight, heading [design]
+    vel_weight: 1.0                  # task-loss channel weight, velocity [design]
+    anchor_penalty_weight: 1.0       # weight of sum (delta / sigma_anchor)^2 (Gaussian prior on the physics) [design]
+
+  anchor_sigma:                      # prior width of each learned deviation delta (D1); log units for value = anchor * exp(delta), else additive
+    gnss_sigma: 0.7                  # log; white GPS sigma (0.7 ~ factor 2) [design]
+    wheel_sigma: 0.7                 # log; wheel-speed sigma [design]
+    lateral_sigma: 0.7               # log; lateral-constraint sigma [design]
+    vertical_sigma: 0.7              # log; vertical-constraint sigma (only if vertical_mode is not off) [design]
+    acc_noise_density: 0.7           # log; accelerometer white noise (Phase 3 optimum flat 0.05-0.2) [tuned]
+    gyr_noise_density: 0.7           # log; MEMS gyro white noise [design]
+    fog_angle_random_walk: 0.35      # log; FOG angle random walk (datasheet value, tighter) [datasheet]
+    grade_rw: 0.7                    # log; terrain-gradient random walk (only if vertical_mode is grade) [design]
+    wheel_scale_offset: 0.01         # additive offset to the per-session date-trend scale (stage 2); ~2x the trend residual 0.0044 [measured, generous]
+    encoder_pitch_coef_m: 0.04       # m additive, R_w (stage 2); anchor 0.24, data 0.17-0.24 m [measured]
+
+  slow_grid:                         # slow parameters: full-session replays, no gradient (D7, user decision)
+    fog_bias_prior_radps: [3.0e-5, 1.0e-4, 3.0e-4]  # round 1: initial FOG bias sigma, rad/s (anchor 1e-4) [design]
+    fog_bias_rw: [3.0e-7, 1.0e-6, 3.0e-6]  # round 1: FOG bias random walk, rad/s/sqrt(s) (anchor 1e-6) [design]
+    gnss_error_sigma_m: [1.5, 2.53]  # round 2: correlated GPS error sigma with error states on, m (Phase 2 fit 2.53) [design]
+    gnss_error_tau_s: [20.0, 55.0]   # round 2: correlation time, s (Phase 2 fit 55) [design]
+    round2_fog_bias_rw_factors: [0.333, 1.0, 3.0]  # round 2: factors on the best round-1 FOG bias random walk [design]
+    round3_enabled: true             # round 3: gyro and accelerometer bias random walks, one at a time [design]
+    round3_bias_rw_factors: [0.333, 3.0]  # round 3: factors on each anchor [design]

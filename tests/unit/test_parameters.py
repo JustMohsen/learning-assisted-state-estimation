@@ -57,6 +57,8 @@ def test_loads_and_matches_filter_config() -> None:
     assert isinstance(p, Parameters)
     assert load_filter_config("baseline") == p.filter
     assert p.filter.nonholonomic.enabled
+    assert p.training.windows.burn_in_s == 20.0
+    assert p.training.loss.innovation_nll_weight == 0.0
 
 
 def test_overrides_merge(tmp_path: Path) -> None:

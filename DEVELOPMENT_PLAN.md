@@ -236,6 +236,8 @@ Existing detail to build on: [research/estimator-mathematics.md](./research/esti
 
 **Goal:** prove that training through the filter works, before any network is involved.
 
+**Detailed plan:** [plans/PHASE_4_TRAINING.md](./plans/PHASE_4_TRAINING.md). **Status: planned (15 November 2026); implementation not started.** Training parameters: `training` section of `configs/parameters.yaml`.
+
 **Parts:**
 - Truncated backpropagation over chunks, carrying state, P and (later) GRU memory across boundaries.
 - Batching strategy chosen from the Phase 3 compute check.
