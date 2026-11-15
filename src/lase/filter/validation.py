@@ -58,6 +58,7 @@ def monte_carlo_propagation(
         b_gyr=torch.zeros(B, 3, dtype=D),
         b_fog=torch.zeros(B, 1, dtype=D),
         wheel_scale=torch.ones(B, 1, dtype=D),
+        gps_err=torch.zeros(B, 2, dtype=D),
     )
     f_true = torch.tensor([[0.5, 0.2, -9.8]], dtype=D)
     w_true = torch.tensor([[0.1, -0.05, 0.2]], dtype=D)

@@ -41,6 +41,7 @@ History:
 - **Non-holonomic constraint in baseline A, lateral only (user decision; R1):** lateral = along the axle, pitch-independent. The vertical term (body-z velocity ~ 0) is wrong under pitch (v sin(pitch), ~0.07 m/s typical) and is now optional, off by default. New learned output nhc_var_mult (CONVENTIONS 6.3): B learns the constraint's noise as a constant, C learns its trust; lateral skids are handled like forward slip (scope stage 3 rewritten accordingly).
 - **Wheel model (R2, user's encoder model):** reported speed = s * V_roll + R_w * q, with q = body pitch rate (gyro y) and R_w = wheel.encoder_pitch_coef_m (0.24 m default: data 0.17-0.24 m, about the wheel radius; to be retuned). V_roll = f . v_axle with f = normalize(axle_w x down): the horizontal direction perpendicular to the axle, from attitude. A first version using the signed norm of the axle velocity in the body x-z plane was rejected: it made the wheel prediction depend on the poorly observed vertical velocity (no barometer, horizontal GPS) and biased the wheel-scale estimate (1.074 vs 1.08 true in a test). Analytic Jacobian checked against autograd (1e-10).
 - **GPS re-acquisition (R3, user decision; all thresholds are parameters):** after more than reacq_trigger_s (5 s) without an accepted fix, fixes are evaluated without being applied. GPS is trusted again only when reacq_min_fixes (5) consecutive gated fixes within reacq_window_s (10 s) have mutually consistent innovations (each within reacq_consistency_m = 5 m of their mean) and a plausible mean offset for the gap (reacq_max_offset_m 10 m + reacq_offset_growth_mps 0.1 m/s x gap; observed dead-reckoning drift ~0.04 m/s median). A first value of 0.25 m/s was too generous: it admitted an 18 m consistent offset. The 300 s covariance-inflation recovery remains as a last resort.
+- **GPS error states (R4; overconfidence fix, switchable; default off until R7 compares on real data):** 2-D first-order Gauss-Markov GPS error (north/east; error-state indices 17-18, N_ERR = 19) with the Phase 2 fitted values (sigma 2.53 m, tau 55 s); the GPS prediction is antenna position + error, and the measurement noise is the remaining white part (1.44 m). Consecutive close fixes therefore add little information (the user's intuition). With zero variance (disabled) the state is inert, as for the wheel scale.
 
 ## Steps
 
@@ -61,7 +62,7 @@ History:
 - [x] R1. Non-holonomic constraint in A, **lateral only**; scope/plan updated: B learns its noise, C learns its trust, lateral slip handled like forward slip
 - [x] R2. Wheel model: encoder senses wheel rotation relative to the chassis, `reported speed = s * V_axle,perp + R_w * q_gyro_y` (R_w a parameter, ~0.2 m measured); pitch-independent axle speed; vertical constraint dropped or loosened
 - [x] R3. GPS re-acquisition: require N mutually consistent fixes after an outage (parameters)
-- [ ] R4. GPS error states (2-D Gauss-Markov, fitted values) for correlated GPS error
+- [x] R4. GPS error states (2-D Gauss-Markov, fitted values) for correlated GPS error
 - [ ] R5. FOG investigation (warm-up, season, pitch/roll correlation, KVH documentation), then a fitted FOG bias model
 - [ ] R6. Wheel-scale test: fixed 1.054 vs chained slow state (previous session's final estimate; first session 1.0), on the corrected model
 - [ ] R7. Retune on training days; re-evaluate on validation days; update report and review notes
@@ -87,6 +88,7 @@ History:
 - 2026-11-15 15:06: R1 done: lateral-only constraint (vertical optional), nhc_var_mult in HeadOutputs, scope / development plan / conventions / review notes updated; 89 unit tests pass.
 - 2026-11-15 15:11: R2 done: pitch-independent rolling speed, encoder pitch-rate term, vertical constraint off by default (R1); 90 unit tests pass.
 - 2026-11-15 15:16: R3 done: re-acquisition rule in the runner, re-acquisition count in run results. Synthetic test (20 s outage, then a consistent 18 m offset for 15 s): worst error 0.09 m with the rule vs 18.2 m without. 91 unit tests pass.
+- 2026-11-15 15:25: R4 done: GPS error states (propagation decay, update Jacobian, prior; F = autograd with the state enabled). Simulation, tuned config with 7 Hz GPS when enabled: nominal NEES 19.7 -> 1.9, median 1.81 -> 0.95 m; realistic NEES 9.8 -> 0.7, median 1.32 -> 0.84 m, p95 3.87 -> 1.98 m. 92 unit tests pass.
 
 ## Summary
 

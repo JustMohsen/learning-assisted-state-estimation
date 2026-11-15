@@ -24,7 +24,7 @@ from lase.filter.so3 import (
     so3_exp,
     so3_right_jacobian,
 )
-from lase.filter.state import BA, BF, BG, N_ERR, P_, TH, V_, WS, NavState
+from lase.filter.state import BA, BF, BG, GE, N_ERR, P_, TH, V_, WS, NavState
 
 
 @dataclass(frozen=True)
@@ -72,6 +72,9 @@ def propagate(
     w = 0.5 * (w0 + w1) - w_ie_b
 
     qg, qf = noise.gyr_noise_density**2, noise.fog_angle_random_walk**2
+    # GPS-error Gauss-Markov decay (inert when the state is disabled: zero variance)
+    gm_phi = torch.exp(-dt / params.gps_gm_tau_s)
+    gm_var = params.gps_gm_var
     wf = iv.fog_valid * (qg / (qg + qf))  # FOG weight on body z
     dth_fog = params.fog_sign * iv.fog_dangle - state.b_fog[:, 0] * dt - w_ie_b[:, 2] * dt
     dth_z = wf * dth_fog + (1 - wf) * w[:, 2] * dt
@@ -92,6 +95,7 @@ def propagate(
         b_gyr=state.b_gyr + drift[:, 3:6] * dt_,
         b_fog=state.b_fog,
         wheel_scale=state.wheel_scale,
+        gps_err=state.gps_err * gm_phi[:, None],
     )
 
     # --- error-state transition F (first order) ---
@@ -132,6 +136,8 @@ def propagate(
     Q[:, BG, BG] = eye3 * (noise.gyr_bias_rw**2 * dt3)
     Q[:, BF, BF] = (noise.fog_bias_rw**2 * dt)[:, None, None]
     Q[:, WS, WS] = (noise.wheel_scale_rw**2 * dt)[:, None, None]
+    F[:, GE, GE] = eye3[:, :2, :2] * gm_phi[:, None, None]
+    Q[:, GE, GE] = eye3[:, :2, :2] * (gm_var * (1 - gm_phi**2))[:, None, None]
 
     P_new = F @ P @ F.transpose(-1, -2) + Q
     P_new = 0.5 * (P_new + P_new.transpose(-1, -2))
@@ -140,7 +146,7 @@ def propagate(
 
 
 def boxminus(a: NavState, b: NavState) -> Tensor:
-    """Error-state difference ``a ⊟ b`` (B, 17): additive except attitude Log(C_b^T C_a)."""
+    """Error-state difference ``a ⊟ b`` (B, 19): additive except attitude Log(C_b^T C_a)."""
     from lase.filter.so3 import so3_log
 
     dth = so3_log(b.C_wb.transpose(-1, -2) @ a.C_wb)
@@ -153,6 +159,7 @@ def boxminus(a: NavState, b: NavState) -> Tensor:
             a.b_gyr - b.b_gyr,
             a.b_fog - b.b_fog,
             a.wheel_scale - b.wheel_scale,
+            a.gps_err - b.gps_err,
         ],
         dim=-1,
     )

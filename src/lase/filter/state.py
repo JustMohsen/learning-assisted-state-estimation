@@ -17,7 +17,8 @@ BA = slice(9, 12)
 BG = slice(12, 15)
 BF = slice(15, 16)
 WS = slice(16, 17)  # wheel speed scale (fixed when its prior and random walk are zero)
-N_ERR = 17
+GE = slice(17, 19)  # GPS horizontal error, north/east (Gauss-Markov; inert when disabled)
+N_ERR = 19
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,7 @@ class NavState:
     b_gyr: Tensor  # (B, 3) IMU axes
     b_fog: Tensor  # (B, 1) FOG axis
     wheel_scale: Tensor  # (B, 1) released wheel speed / true speed
+    gps_err: Tensor  # (B, 2) time-correlated GPS error, north/east (m)
 
     @property
     def C_wb(self) -> Tensor:
@@ -47,6 +49,7 @@ class NavState:
             b_gyr=self.b_gyr + dx[:, BG],
             b_fog=self.b_fog + dx[:, BF],
             wheel_scale=self.wheel_scale + dx[:, WS],
+            gps_err=self.gps_err + dx[:, GE],
         )
 
 

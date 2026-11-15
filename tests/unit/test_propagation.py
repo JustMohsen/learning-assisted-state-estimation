@@ -27,6 +27,7 @@ def _state(seed: int = 0) -> NavState:
         b_gyr=0.01 * torch.randn(1, 3, generator=g, dtype=D),
         b_fog=1e-4 * torch.randn(1, 1, generator=g, dtype=D),
         wheel_scale=torch.ones(1, 1, dtype=D),
+        gps_err=torch.tensor([[0.7, -0.4]], dtype=D),
     )
 
 
@@ -70,6 +71,7 @@ def test_mean_matches_strapdown_without_fog() -> None:
         torch.zeros(1, 3, dtype=D),
         torch.zeros(1, 1, dtype=D),
         torch.ones(1, 1, dtype=D),
+        torch.zeros(1, 2, dtype=D),
     )
     P = torch.eye(N_ERR, dtype=D)[None]
     cfg = FilterConfig()
@@ -111,3 +113,23 @@ def test_covariance_jacobian_matches_autograd_with_fog() -> None:
 
 def test_covariance_jacobian_matches_autograd_without_fog() -> None:
     _check_jacobian(0.0)
+
+
+def test_jacobian_with_gps_error_state_enabled() -> None:
+    from lase.filter.params import FilterConfig as FC
+
+    base = FC()
+    cfg = base.model_copy(update={"gnss": base.gnss.model_copy(update={"error_state": True})})
+    params, x0, iv = FilterParams.build(load_calibration(), cfg), _state(), _interval()
+    P = torch.eye(N_ERR, dtype=D)[None]
+    learned = HeadOutputs.neutral(1)
+    base_out, _, diag = propagate(x0, P, iv, params, cfg.noise, learned)
+
+    def f(dx: torch.Tensor) -> torch.Tensor:
+        out, _, _ = propagate(x0.inject(dx[None]), P, iv, params, cfg.noise, learned)
+        return boxminus(out, base_out)[0]
+
+    J = torch.autograd.functional.jacobian(f, torch.zeros(N_ERR, dtype=D))
+    np.testing.assert_allclose(diag.F[0].numpy(), J.numpy(), atol=1e-8, rtol=1e-6)
+    phi = float(np.exp(-0.02 / cfg.gnss.error_gm_tau_s))
+    np.testing.assert_allclose(diag.F[0, 17:19, 17:19].numpy(), phi * np.eye(2), atol=1e-12)

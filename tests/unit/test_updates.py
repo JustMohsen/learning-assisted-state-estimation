@@ -29,6 +29,7 @@ def _state() -> NavState:
         b_gyr=torch.zeros(1, 3, dtype=D),
         b_fog=torch.zeros(1, 1, dtype=D),
         wheel_scale=torch.full((1, 1), 1.05, dtype=D),
+        gps_err=torch.tensor([[0.7, -0.4]], dtype=D),
     )
 
 
@@ -53,6 +54,7 @@ def test_wheel_jacobian_matches_autograd() -> None:
         x0.b_gyr,
         x0.b_fog,
         x0.wheel_scale,
+        x0.gps_err,
     )
     omega = torch.tensor([[0.05, -0.2, 0.3]], dtype=D)
     J = _H_numeric(
@@ -102,6 +104,7 @@ def test_rolling_speed_is_pitch_independent() -> None:
             torch.zeros(1, 3, dtype=D),
             torch.zeros(1, 1, dtype=D),
             torch.ones(1, 1, dtype=D),
+            torch.zeros(1, 2, dtype=D),
         )
         assert float(wheel_prediction(x, omega, params)[0]) == pytest.approx(1.4, abs=1e-12)
 
@@ -116,6 +119,7 @@ def test_gnss_jacobian_matches_autograd() -> None:
     H = torch.zeros(2, N_ERR, dtype=D)
     H[:, 0:3] = torch.eye(3, dtype=D)[:2]
     H[:, 6:9] = -(x0.C_wb[0] @ skew(d))[:2]
+    H[:, 17:19] = torch.eye(2, dtype=D)  # correlated GPS error state
     np.testing.assert_allclose(H.numpy(), J.numpy(), atol=1e-10)
 
 

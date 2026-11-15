@@ -113,6 +113,7 @@ def initial_state(
         b_gyr=torch.zeros(1, 3, dtype=D),
         b_fog=torch.zeros(1, 1, dtype=D),
         wheel_scale=torch.full((1, 1), params.wheel_scale, dtype=D),
+        gps_err=torch.zeros(1, 2, dtype=D),
     )
     pr = cfg.prior
     sig = np.r_[
@@ -123,6 +124,7 @@ def initial_state(
         [pr.gyr_bias_radps] * 3,
         [pr.fog_bias_radps],
         [pr.wheel_scale],
+        [np.sqrt(params.gps_gm_var)] * 2,
     ]
     return state, torch.diag(torch.as_tensor(sig, dtype=D) ** 2)[None]
 

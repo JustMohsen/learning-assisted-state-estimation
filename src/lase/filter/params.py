@@ -81,6 +81,10 @@ class GnssUpdateConfig(Config):
     reacq_max_offset_m: float = 10.0  # allowed mean innovation at a zero-length gap
     reacq_offset_growth_mps: float = 0.1  # plus this per second of gap (dead-reckoning drift)
     min_interval_s: float = 0.0  # skip fixes closer than this to the previous GPS update
+    error_state: bool = False  # model time-correlated GPS error as a Gauss-Markov state
+    error_gm_sigma_m: float = 2.53  # stationary sigma of the correlated error (Phase 2 fit)
+    error_gm_tau_s: float = 55.0  # correlation time (Phase 2 fit)
+    error_white_sigma_m: float = 1.44  # remaining white noise when error_state is on (Phase 2 fit)
 
 
 class FogHandlingConfig(Config):
@@ -142,6 +146,8 @@ class FilterParams:
     wheel_scale: float
     gravity_w: Tensor  # (3,)
     earth_rate_w: Tensor  # (3,) Earth rotation in NED (zeros if not compensated)
+    gps_gm_tau_s: float = 55.0  # GPS-error correlation time
+    gps_gm_var: float = 0.0  # GPS-error stationary variance (0 = state disabled)
 
     @classmethod
     def build(cls, cal: NcltCalibration, cfg: FilterConfig) -> FilterParams:
@@ -163,4 +169,6 @@ class FilterParams:
                 if cfg.earth_rotation
                 else (0.0, 0.0, 0.0)
             ),
+            gps_gm_tau_s=cfg.gnss.error_gm_tau_s,
+            gps_gm_var=cfg.gnss.error_gm_sigma_m**2 if cfg.gnss.error_state else 0.0,
         )

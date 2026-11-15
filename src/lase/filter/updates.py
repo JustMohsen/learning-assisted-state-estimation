@@ -16,7 +16,7 @@ from torch import Tensor
 from lase.filter.learned import HeadOutputs
 from lase.filter.params import FilterParams, GnssUpdateConfig, NonholonomicConfig, WheelUpdateConfig
 from lase.filter.so3 import skew
-from lase.filter.state import N_ERR, P_, TH, V_, WS, NavState
+from lase.filter.state import GE, N_ERR, P_, TH, V_, WS, NavState
 
 
 @dataclass(frozen=True)
@@ -183,9 +183,10 @@ def update_nonholonomic(
 
 
 def gnss_prediction(state: NavState, params: FilterParams) -> Tensor:
-    """Predicted horizontal antenna position (B, 2)."""
+    """Predicted GPS fix (B, 2): horizontal antenna position plus the correlated GPS error."""
     d = params.l_gps - params.l_imu
-    return (state.p_w + (state.C_wb @ d))[:, :2]
+    out: Tensor = (state.p_w + (state.C_wb @ d))[:, :2] + state.gps_err
+    return out
 
 
 def update_gnss(
@@ -204,6 +205,8 @@ def update_gnss(
     H = torch.zeros(B, 2, N_ERR, dtype=P.dtype)
     H[:, :, P_] = torch.eye(3, dtype=P.dtype)[:2]
     H[:, :, TH] = -(C @ skew(d))[:, :2, :]
-    R = torch.diag_embed(cfg.sigma_m**2 * learned.gnss_var_mult)
+    H[:, :, GE] = torch.eye(2, dtype=P.dtype)
+    sigma = cfg.error_white_sigma_m if cfg.error_state else cfg.sigma_m
+    R = torch.diag_embed(sigma**2 * learned.gnss_var_mult)
     r = z_ne - gnss_prediction(state, params)
     return kalman_update(state, P, r, H, R, gate_threshold(cfg.gate_prob, 2), apply)
