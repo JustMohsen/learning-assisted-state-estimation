@@ -49,6 +49,11 @@ def configs(stage: str = "1") -> dict[str, FilterConfig]:
                     "noise": base.noise.model_copy(update={"fog_bias_rw": frw}),
                 }
             )
+        # control: Earth-rate compensation off (expected no better once the FOG prior is realistic)
+        c = out["r7a_gpsGM_1hz_fog1e-4_rw1e-6"]
+        out["r7a_gpsGM_1hz_fog1e-4_rw1e-6_earthOff"] = c.model_copy(
+            update={"name": c.name + "_earthOff", "earth_rotation": False}
+        )
         return out
     if stage == "r7b":  # revision: lateral-constraint sigma x encoder term, on the r7a winner
         win = load_filter_config(_arg(2, "baseline"))

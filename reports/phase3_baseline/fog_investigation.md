@@ -36,5 +36,8 @@
 
    To be confirmed in the R7 tuning, together with the GPS error states. Without them, a wider prior made results worse, because correlated GPS error was being absorbed into the bias.
 3. **FOG axis:** aligned with the IMU z axis to 0.7°, with no scale error. No correction needed (a 0.7° tilt leaks about 1% of pitch/roll rate).
-4. **Earth rate:** still open. The datasheet doesn't say whether the released data is compensated. The mean session residual (+6 ± 3°/h) has the opposite sign to an uncompensated Earth rate (−10°/h), and compensating made results worse empirically, so compensation stays off.
+4. **Earth rate: compensated (user decision, Phase 3 review).**
+   - The FOG and gyros measure inertial rotation: about 10.1°/h on the local vertical at 42.3° N. A filter navigating in local North-East-Down must remove it.
+   - My earlier test, where compensation made heading worse, was confounded by the too-tight FOG-bias prior (1e-5 rad/s), so the filter could not absorb the per-session offset (+6 ± 3°/h mean residual; per-session offsets up to ±25°/h).
+   - The realistic bias prior now leaves the offsets to the bias states (and later the network). R7 includes an "off" control.
 5. **Reference roll at graph nodes** does not follow the IMU's roll motion closely. Short-window attitude metrics against the reference should be read with that in mind.

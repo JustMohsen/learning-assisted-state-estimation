@@ -121,6 +121,10 @@
 | 12 | Compute | Batching/compilation, noted for Phase 4 planning |
 | – | Parameters | **Every decided value is a named, commented parameter** in `configs/parameters.yaml` (user request; done, R0) |
 | – | Wheel/pitch model | Encoder measures wheel rotation relative to the chassis: `w_enc = V/R + w_body_pitch`, so reported speed = `s·V + R_w·q_gyro_y` (data: coefficient 0.17–0.24 m ≈ wheel radius) |
+| – | Earth rate | **Compensate it** with the physically correct sign (~10.1°/h on the local vertical); per-session FOG/gyro offsets left to the bias states and later the network. The earlier "data argues against it" conclusion was confounded by the too-tight FOG-bias prior. An "off" control is included in R7. |
+| – | Lateral skid | Agreed: handled like forward slip (variance inflation, rejection, suspected-skid diagnostic) in the learned stages; baseline A gates only. |
+| – | Reference roll limitation | Documented (scope §4.3, FOG investigation report); no action. |
+| – | Graph-node-only drift | Explained (drift intervals anchored at LiDAR/RTK graph nodes instead of the odometry-interpolated dense reference); awaiting yes/no. |
 
 Revision steps R0–R7 are tracked in [PHASE_3_WORKLOG.md](./PHASE_3_WORKLOG.md).
 

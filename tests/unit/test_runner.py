@@ -15,6 +15,7 @@ from lase.evaluation.estimate import reference_samples
 from lase.evaluation.metrics import compute_errors, summarize
 from lase.filter.params import FilterConfig, FilterParams
 from lase.filter.runner import initial_condition_from_reference, run_filter
+from lase.geometry.constants import earth_rate_ned
 from lase.sim.config import FogErrors, GpsErrors, WheelErrors
 from lase.sim.sensors import simulate_fog, simulate_gps, simulate_imu, simulate_wheels
 from lase.sim.simulate import _reference_from_truth
@@ -35,7 +36,7 @@ def _clean_streams(wheel_scale: float = 1.0):  # type: ignore[no-untyped-def]
         jitter(3800, 23_000),
         jitter(560, 143_000),
     )
-    w_ie = None  # NCLT data appears Earth-rate compensated; the filter default matches
+    w_ie = np.asarray(earth_rate_ned())  # sensors sense the Earth rate; the filter removes it
     imu = simulate_imu(traj, t_imu, cal, _zero_imu(), rng, w_ie)
     fog = simulate_fog(
         traj,

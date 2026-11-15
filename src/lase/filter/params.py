@@ -127,9 +127,9 @@ class FilterConfig(Config):
     fog_handling: FogHandlingConfig = FogHandlingConfig()
     init: InitConfig = InitConfig()
     use_fog: bool = True
-    # Off: on training days compensating made heading worse (released FOG data appears to be
-    # Earth-rate compensated already); kept as an option.
-    earth_rotation: bool = False
+    # Remove the Earth rate (~10.1 deg/h on the local vertical at NCLT) sensed by gyro and FOG;
+    # the per-session FOG/gyro offsets are left to the bias states (user decision, Phase 3 review).
+    earth_rotation: bool = True
     output_every: int = 1  # emit an estimate every n-th propagation step
 
 

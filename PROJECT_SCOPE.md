@@ -180,6 +180,7 @@ NCLT's reference is a 6-DOF pose from offline multi-session SLAM using LiDAR, RT
 
 - primary scoring uses the SLAM graph-node poses (anchored by LiDAR scan matching and RTK GPS, mostly independent of our sensors), with dense-pose results reported as a sensitivity check. Dense poses between nodes (~5 m / 3.6 s apart) are interpolated with NCLT's wheel+FOG odometry, so short-window and velocity metrics are indicative only;
 - velocity "truth" is derived from reference pose, with quality control;
+- the reference's roll at graph nodes does not follow the IMU's roll motion closely (Phase 3, FOG investigation), so short-window roll/attitude comparisons against it are indicative only;
 - tiny differences between methods are not over-interpreted.
 
 There are no labels for true biases, true noise levels or slip events.

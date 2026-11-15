@@ -80,7 +80,7 @@ filter:
     start_offset_s: 1.0              # s after the first valid reference pose where runs start [design]
 
   use_fog: true                      # fuse the FOG for body-z rotation (false = IMU gyro only)
-  earth_rotation: false              # compensate Earth rate; off: released FOG appears compensated [measured]
+  earth_rotation: true               # remove the Earth rate sensed by gyro and FOG (~10.1 deg/h on the local vertical); per-session FOG/gyro offsets are left to the bias states (user decision, Phase 3 review) [physics]
   output_every: 1                    # emit an estimate every n-th IMU step
 
 data:
