@@ -1,0 +1,22 @@
+# SHA-256 and size of each NCLT file, recorded on first download (trust on first use)
+# and verified on later runs. Written by scripts/download_nclt.py.
+base_url: https://s3.us-east-2.amazonaws.com/nclt.perl.engin.umich.edu
+files:
+  covariance/cov_2012-01-22.csv:
+    size: 431013
+    sha256: 671fbda3343ed3497598d41f88d8849a013fd75dca8a9c5fe73ccc0fce9ebcc9
+  covariance/cov_2013-01-10.csv:
+    size: 81543
+    sha256: 7d698acbcadf5958c6df0813e67f20813c2c13effcc774c5515b179ce6f3704c
+  ground_truth/groundtruth_2012-01-22.csv:
+    size: 107741080
+    sha256: 5ada1a85f2b6f11380aaceb124bf4b2067cf3cc28b7b8eb1c700e4737b00260f
+  ground_truth/groundtruth_2013-01-10.csv:
+    size: 20669309
+    sha256: 4301c74fecc9578353a2f373f50320de97542962240fc314389bf6fdd9063b63
+  sensor_data/2012-01-22_sen.tar.gz:
+    size: 111648041
+    sha256: cc2d5917eca463ce59bd2307c46b2458f74c01d20022ee469e99752e09b3bf3d
+  sensor_data/2013-01-10_sen.tar.gz:
+    size: 21669014
+    sha256: 3ec1a5ac27ee716e6e5da0cd4e8fee96241d6a21ac63d14a844c40d2410d5ffb
