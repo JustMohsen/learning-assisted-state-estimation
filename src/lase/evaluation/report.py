@@ -39,7 +39,10 @@ class EvaluationReport:
     name: str
     nodes: dict[str, float]
     dense: dict[str, float]
-    rpe: dict[float, RpeResult]
+    rpe: dict[
+        float, RpeResult
+    ]  # dense reference (odometry-interpolated between nodes; sensitivity)
+    rpe_nodes: dict[float, RpeResult]  # graph nodes only (LiDAR/RTK-anchored; primary)
     injected_outages: OutageCurves | None
     natural_outages: OutageCurves | None
     nees_pos: ConsistencyResult | None
@@ -50,9 +53,10 @@ class EvaluationReport:
         out: dict[str, Any] = {"method": self.name}
         out.update({f"nodes_{k}": v for k, v in self.nodes.items()})
         out.update({f"dense_{k}": v for k, v in self.dense.items()})
-        for d, r in self.rpe.items():
-            out[f"rpe{d:g}s_trans_rmse_m"] = r.trans_rmse_m
-            out[f"rpe{d:g}s_heading_rmse_deg"] = r.heading_rmse_deg
+        for tag, res in (("nodes", self.rpe_nodes), ("dense", self.rpe)):
+            for d, r in res.items():
+                out[f"rpe{d:g}s_{tag}_trans_rmse_m"] = r.trans_rmse_m
+                out[f"rpe{d:g}s_{tag}_heading_rmse_deg"] = r.heading_rmse_deg
         for tag, c in (("inj", self.injected_outages), ("nat", self.natural_outages)):
             if c is not None and len(c.errors_m):
                 out[f"{tag}_outages_n"] = len(c.errors_m)
@@ -103,6 +107,7 @@ def evaluate_estimate(
         nodes=summarize(e_nodes),
         dense=summarize(e_dense),
         rpe={d: relative_pose_error(est, dense_s, d, max_staleness_us) for d in rpe_deltas_s},
+        rpe_nodes={d: relative_pose_error(est, nodes_s, d, max_staleness_us) for d in rpe_deltas_s},
         injected_outages=(
             outage_curves(e_dense, injected_spans, curve_offsets_s, curve_sample_tolerance_s)
             if injected_spans

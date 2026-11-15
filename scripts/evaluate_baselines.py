@@ -54,9 +54,10 @@ def main() -> int:
             row.update({f"nodes_{k}": v for k, v in summarize(e_nodes).items()})
             row.update({f"dense_{k}": v for k, v in summarize(compute_errors(est, dense)).items()})
             for delta in (10.0, 60.0):
-                r = relative_pose_error(est, dense, delta)
-                row[f"rpe{int(delta)}_trans_rmse_m"] = r.trans_rmse_m
-                row[f"rpe{int(delta)}_heading_rmse_deg"] = r.heading_rmse_deg
+                for tag, samples in (("nodes", nodes), ("dense", dense)):
+                    r = relative_pose_error(est, samples, delta)
+                    row[f"rpe{int(delta)}s_{tag}_trans_rmse_m"] = r.trans_rmse_m
+                    row[f"rpe{int(delta)}s_{tag}_heading_rmse_deg"] = r.heading_rmse_deg
             rows.append(row)
         # outage curves: GPS withheld in the planned windows (hold baseline repeats last fix)
         hold = gps_hold_baseline(withhold_gps(s, spans), cal)

@@ -50,7 +50,7 @@ def main() -> int:
         "nodes_pos_p95_m",
         "nodes_heading_rmse_deg",
         "dense_vel_rmse_mps",
-        "rpe60s_trans_rmse_m",
+        "rpe60s_nodes_trans_rmse_m",
         "inj_outage_final_med_m",
         "wheel_nis_mean",
     ]

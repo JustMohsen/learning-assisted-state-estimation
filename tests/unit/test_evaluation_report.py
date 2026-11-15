@@ -43,12 +43,16 @@ def test_evaluate_estimate_end_to_end() -> None:
     assert rep.nodes["pos_rmse_m"] == pytest.approx(1.0, abs=0.02)
     assert rep.dense["pos_median_m"] == pytest.approx(1.0, abs=0.02)
     assert rep.rpe[10.0].trans_rmse_m < 0.05
+    assert rep.rpe_nodes[10.0].n > 0  # graph-node-anchored drift (nodes every 3.6 s here)
+    assert rep.rpe_nodes[10.0].trans_rmse_m < 0.05
     assert rep.injected_outages is not None
     assert rep.nees_pos is not None
     assert rep.nees_pos.mean == pytest.approx(1.0, abs=0.05)  # error (1, 0), unit covariance
     row = rep.row()
     assert row["method"] == "reference"
     assert "inj_outage_med_at_30s_m" in row
+    assert "rpe10s_nodes_trans_rmse_m" in row
+    assert "rpe10s_dense_trans_rmse_m" in row
 
 
 def test_natural_outage_spans() -> None:

@@ -97,7 +97,7 @@ evaluation:
   max_staleness_s: 0.2               # s; reference times with no estimate this recent count as not covered [design]
   dense_rate_hz: 10.0                # Hz grid for dense (sensitivity) scoring, RPE and outage curves [design]
   score_start_after_init_s: 10.0     # s after run start before scoring begins [design]
-  rpe_deltas_s: [10.0, 60.0]         # s intervals for relative pose error [design]
+  rpe_deltas_s: [10.0, 60.0]         # s intervals for relative pose error (drift); computed on graph nodes (primary, LiDAR/RTK-anchored; user decision) and on the dense reference (sensitivity) [design]
   outages:
     durations_s: [30.0, 60.0, 120.0] # s injected outage lengths (user decision: report with natural outages)
     per_duration: 3                  # injected windows per duration per session

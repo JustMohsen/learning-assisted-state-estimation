@@ -95,7 +95,7 @@
 | 2 | Validation volume | **Keep the agreed 22/2/3 split.** |
 | 3 | Headline metric | Decided in the Phase 2 discussion (below). |
 | – | GPS gating | Robust gating agreed. |
-| – | Reference trust | Clarified: graph nodes (~5 m apart) come from multi-session LiDAR scan matching + RTK + odometry (mostly independent of our sensors; ~8 cm σ). Dense poses between nodes are interpolated with NCLT's wheel+FOG odometry (our sensor family). Primary scoring stays at graph nodes; dense-reference metrics (short-window drift, velocity) are treated as indicative. Optional follow-up, not yet approved: node-only drift (RPE) so short-window metrics are also LiDAR/RTK-anchored. |
+| – | Reference trust | Clarified: graph nodes (~5 m apart) come from multi-session LiDAR scan matching + RTK + odometry (mostly independent of our sensors; ~8 cm σ). Dense poses between nodes are interpolated with NCLT's wheel+FOG odometry (our sensor family). Primary scoring stays at graph nodes; dense-reference metrics (short-window drift, velocity) are treated as indicative. Node-anchored drift (RPE) approved and implemented in the Phase 3 review. |
 
 **Phase 1: accepted by the user as complete (15 November 2026).**
 
@@ -124,7 +124,7 @@
 | – | Earth rate | **Compensate it** with the physically correct sign (~10.1°/h on the local vertical); per-session FOG/gyro offsets left to the bias states and later the network. The earlier "data argues against it" conclusion was confounded by the too-tight FOG-bias prior. An "off" control is included in R7. |
 | – | Lateral skid | Agreed: handled like forward slip (variance inflation, rejection, suspected-skid diagnostic) in the learned stages; baseline A gates only. |
 | – | Reference roll limitation | Documented (scope §4.3, FOG investigation report); no action. |
-| – | Graph-node-only drift | Explained (drift intervals anchored at LiDAR/RTK graph nodes instead of the odometry-interpolated dense reference); awaiting yes/no. |
+| – | Graph-node-only drift | **Yes (user decision):** drift (relative pose error) is computed between graph nodes, LiDAR/RTK-anchored, as the primary metric; the dense-reference version is kept as a sensitivity check. Implemented. |
 
 Revision steps R0–R7 are tracked in [PHASE_3_WORKLOG.md](./PHASE_3_WORKLOG.md).
 

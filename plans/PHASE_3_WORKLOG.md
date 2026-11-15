@@ -45,6 +45,7 @@ History:
 - **FOG drift explained (R5; reports/phase3_baseline/fog_investigation.md):** a genuine FOG bias (per-session turn-on offset up to ~+-25 deg/h plus slow within-session variation), confirmed against GPS course (independent of FOG and LiDAR); no warm-up or seasonal effect; FOG axis within 0.7 deg of IMU z with unit scale. Matches the original KVH DSP-3000 datasheet (bias offset +-20 deg/h, bias vs temperature <= 6 deg/h); the previous prior (1e-5 rad/s) used the constant-temperature instability figure. Proposed: FOG bias prior ~1e-4 rad/s, random walk 1e-6 to 2e-6 rad/s/sqrt(s), to be confirmed in R7 with the GPS error states. Earth-rate question still open (compensation stays off).
 - **Earth rate compensated again (user decision; reverses the earlier 'off'):** physically required for a local-NED filter (~10.1 deg/h on the vertical at 42.3 N). The earlier test showing harm was confounded by the too-tight FOG-bias prior, found in R5. Per-session FOG/gyro offsets are left to the bias states (realistic prior in R7) and later the network. Defaults on in parameters.yaml, FilterConfig and SimConfig; R7a includes an 'off' control.
 - **Lateral skid (agreed):** handled like forward slip in the learned stages; baseline A gates only. **Reference roll limitation:** documented (scope 4.3, FOG investigation report).
+- **Graph-node-anchored drift (user decision):** relative pose error is computed between graph nodes (LiDAR/RTK-anchored start/end points) as the primary drift metric (rpe{10,60}s_nodes_*); the dense-reference version (odometry-interpolated between nodes) is kept as a sensitivity check (rpe*_dense_*).
 
 ## Steps
 
@@ -95,6 +96,7 @@ History:
 - 2026-11-15 15:29: Finding: the reference's roll at graph nodes does not follow the IMU roll motion (FOG-vs-reference residual correlates with roll rate, coefficient 0.17, while FOG and IMU agree to 0.7 deg): a reference limitation for short-window attitude comparisons.
 - 2026-11-15 15:29: R5 done: FOG investigation report; bias model proposal for R7.
 - 2026-11-15 16:01: Bug found and fixed: after R1 made the non-holonomic constraint 1-D, the experiment summary still reshaped its innovations as 2-D, which crashed the first R6 run (no results). The summary now infers the measurement dimension; validation smoke test added for both constraint variants. The stale pre-revision all-training-days diagnostic was stopped (superseded; rerun in R7 with the new code). 2x2 wheel-model comparison (encoder term x vertical constraint) added.
+- 2026-11-15 16:18: Clarified for the user: the filter removes the full 3-D Earth-rate vector (15.04 deg/h; NED [11.1, 0, -10.1] deg/h at 42.3 N) from all gyro axes and the FOG via C_wb^T w_ie; 10.1 deg/h (vertical) is the part that drives heading, while the horizontal part would tilt roll/pitch, which gravity keeps correcting.
 
 ## Summary
 

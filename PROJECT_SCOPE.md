@@ -351,7 +351,7 @@ Later stages proceed only if the earlier ones are sound. Negative findings are k
 
 ## 9. Evaluation
 
-- **Accuracy:** **headline: horizontal position RMSE at graph nodes, always reported with the median and 95th percentile** (consumer-GPS outliers dominate RMSE); also wrapped heading RMSE and derived velocity RMSE, per test day and overall. GPS-outage results are reported for both injected (30/60/120 s) and natural outages. Drift over fixed intervals; error growth during outages. No fitting or aligning of the test trajectory to the reference for primary metrics.
+- **Accuracy:** **headline: horizontal position RMSE at graph nodes, always reported with the median and 95th percentile** (consumer-GPS outliers dominate RMSE); also wrapped heading RMSE and derived velocity RMSE, per test day and overall. GPS-outage results are reported for both injected (30/60/120 s) and natural outages. Drift over fixed intervals (relative pose error between **graph nodes**, i.e. LiDAR/RTK-anchored start and end points; the dense-reference version is a sensitivity check); error growth during outages. No fitting or aligning of the test trajectory to the reference for primary metrics.
 - **Consistency:** innovation statistics and coverage (does the stated uncertainty match actual errors?). Do learned variances behave like real sensor noise, or just like arbitrary weights?
 - **Robustness:** failures, resets, rejected measurements and recovery after outages. Failed intervals stay in the accounting.
 - **Cost:** runtime per step and memory, compared with the classical filter.
