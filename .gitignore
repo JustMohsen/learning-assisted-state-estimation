@@ -19,7 +19,8 @@ htmlcov/
 .env
 
 # Data and outputs (never committed)
-/data/
+/local_data/*
+!/local_data/README.md
 /runs/
 *.tar.gz
 *.zip

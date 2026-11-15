@@ -15,7 +15,7 @@ Rules every contributor, human or agent, follows so independently built parts fi
 | Hooks | `uv run pre-commit install` once per clone. Hooks: ruff format, ruff lint, mypy, notebook-output stripping, basic file hygiene. |
 | Branches | During initial development, commit directly to `main`. Run `uv run pre-commit run --all-files` before every push, and keep `main` green. Feature branches and pull requests are optional (e.g. for risky experiments) and may become the default later. |
 | Commits | Imperative, concise subject (`Add GNSS update`, `Fix FOG unwrap sign`). One logical change per commit. |
-| Data | Never committed. Raw data is under `$LASE_DATA_DIR` (see `.env.example`). Caches and run outputs live in gitignored directories. |
+| Data | Never committed. Data lives in `local_data/` at the repo root (gitignored except its README), or under `$LASE_DATA_DIR` if set. Access it only through `lase.utils.paths` (`data_dir()`, `nclt_dir()`), never hard-coded paths. Caches and run outputs live in gitignored directories. |
 | Third-party code | Cloned into `external/` (gitignored), never copied into `src/`. Record the upstream commit used. |
 
 ## 2. Code organisation

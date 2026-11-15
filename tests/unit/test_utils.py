@@ -7,7 +7,7 @@ import pytest
 import torch
 
 from lase.utils.config import Config, dump_config, load_config
-from lase.utils.paths import DATA_DIR_ENV, data_dir
+from lase.utils.paths import DATA_DIR_ENV, data_dir, repo_root
 from lase.utils.provenance import create_run_dir
 from lase.utils.seeding import seed_everything
 
@@ -49,12 +49,14 @@ def test_seed_everything_reproducible() -> None:
     assert torch.equal(a[1], b[1])
 
 
-def test_data_dir_requires_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_data_dir_default_and_override(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.delenv(DATA_DIR_ENV, raising=False)
-    with pytest.raises(RuntimeError):
-        data_dir()
+    assert data_dir() == repo_root() / "local_data"
     monkeypatch.setenv(DATA_DIR_ENV, str(tmp_path))
     assert data_dir() == tmp_path
+    monkeypatch.setenv(DATA_DIR_ENV, str(tmp_path / "missing"))
+    with pytest.raises(RuntimeError):
+        data_dir()
 
 
 def test_create_run_dir(tmp_path: Path) -> None:

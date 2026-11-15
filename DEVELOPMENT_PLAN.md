@@ -65,7 +65,7 @@ flowchart TD
 | Dev dependencies | `ruff` (lint + format), `mypy` (type checking), `pytest`, `pytest-cov`, `pre-commit`, `jupyter` |
 | Optional, added when needed | `tensorboard` (training curves), `evo` (trajectory-metric cross-check), `gtsam` (independent smoother cross-check) |
 | Quality gates | Pre-commit hooks: ruff format, ruff lint, mypy. GitHub Actions CI on every push to `main` (and on any pull request): lint, type check, unit tests on CPU. |
-| Data | Never committed. Raw data lives at a path given by an environment variable (`LASE_DATA_DIR`). A download script records checksums. |
+| Data | Never committed. Data lives in `local_data/` at the repo root (gitignored except its README); `LASE_DATA_DIR` optionally overrides the location. A download script records checksums. |
 | Run outputs | `runs/` (gitignored). Each run stores its resolved config, git commit, seed and data manifest. |
 
 ### 3.2 Repository structure
@@ -97,7 +97,7 @@ learning-assisted-state-estimation/
 ├── reports/                  # validation reports and figures worth keeping
 ├── external/                 # third-party code cloned for comparators (e.g. Song et al.), not vendored
 ├── research/, archive/       # background design material
-├── data/  (gitignored)       # optional local link to LASE_DATA_DIR
+├── local_data/ (gitignored)  # downloaded data; only its README is committed
 └── runs/  (gitignored)
 ```
 
@@ -125,6 +125,8 @@ learning-assisted-state-estimation/
 ## 4. Phase 1: Data foundation
 
 **Goal:** every sensor stream loaded, converted and placed correctly in time and space, with its quirks understood across all sessions.
+
+**Detailed plan:** [plans/PHASE_1_DATA_FOUNDATION.md](./plans/PHASE_1_DATA_FOUNDATION.md).
 
 **Parts:**
 - Download and checksum the sessions; split manifest (22/2/3 days) as a config file.

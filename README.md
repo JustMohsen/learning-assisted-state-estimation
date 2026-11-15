@@ -66,6 +66,7 @@ Comparator tracks run alongside: reproducing the published NCLT KalmanNet (from 
 | [PROJECT_SCOPE.md](./PROJECT_SCOPE.md) | Comprehensive scope: design, data, training, comparisons, evaluation, positioning, exclusions |
 | [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) | Phases, dependencies, repository setup and per-part validation |
 | [CONVENTIONS.md](./CONVENTIONS.md) | Coding rules, frames and units, state layout, interface contract. **Read before writing code.** |
+| [plans/](./plans/) | Detailed per-phase plans, e.g. [Phase 1: data foundation](./plans/PHASE_1_DATA_FOUNDATION.md) |
 
 The overview and scope define the project; where anything else in the repository conflicts with them, they win.
 
@@ -77,8 +78,13 @@ Requires [uv](https://docs.astral.sh/uv/). Python 3.12 is installed by uv if mis
 uv sync                          # create the environment from uv.lock
 uv run pre-commit install        # enable format/lint/type-check hooks
 uv run pytest                    # unit tests
-cp .env.example .env             # then set LASE_DATA_DIR to the NCLT data location
 ```
+
+### Data
+
+The NCLT data is **not in the repository**. It lives in [`local_data/`](./local_data/) at the repository root, which is gitignored apart from its README. Each clone downloads its own copy, about 5.4 GB for all 27 sessions (sensor archives, ground truth, covariances; no images or LiDAR). The code finds `local_data/` automatically; set `LASE_DATA_DIR` only to keep the data somewhere else.
+
+Download instructions, URLs and directory layout: [local_data/README.md](./local_data/README.md). A download script that fetches by split or date and verifies checksums is part of Phase 1.
 
 ```text
 src/lase/        library code (data, geometry, sim, filter, learning, comparators, training, evaluation, utils)
