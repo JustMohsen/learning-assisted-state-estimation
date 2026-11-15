@@ -114,6 +114,7 @@ def initial_state(
         b_fog=torch.zeros(1, 1, dtype=D),
         wheel_scale=torch.full((1, 1), params.wheel_scale, dtype=D),
         gps_err=torch.zeros(1, 2, dtype=D),
+        grade=torch.zeros(1, 2, dtype=D),
     )
     pr = cfg.prior
     sig = np.r_[
@@ -125,6 +126,8 @@ def initial_state(
         [pr.fog_bias_radps],
         [pr.wheel_scale],
         [np.sqrt(params.gps_gm_var)] * 2,
+        [cfg.nonholonomic.grade_prior_sigma if cfg.nonholonomic.vertical_mode == "grade" else 0.0]
+        * 2,
     ]
     return state, torch.diag(torch.as_tensor(sig, dtype=D) ** 2)[None]
 
@@ -206,6 +209,7 @@ def run_filter(
     out_h, out_cov = np.zeros(n_max), np.zeros((n_max, 5, 5))
     out_ba, out_bg, out_bf = np.zeros((n_max, 3)), np.zeros((n_max, 3)), np.zeros(n_max)
     out_ws = np.zeros(n_max)
+    out_ge = np.zeros((n_max, 2))
     n_out = 0
     wheel_log, gnss_log, nhc_log = UpdateLog(), UpdateLog(), UpdateLog()
     last_imu: tuple[int, Tensor, Tensor] | None = None
@@ -394,6 +398,7 @@ def run_filter(
             out_bg[n_out] = state.b_gyr[0].numpy()
             out_bf[n_out] = float(state.b_fog[0, 0])
             out_ws[n_out] = float(state.wheel_scale[0, 0])
+            out_ge[n_out] = state.gps_err[0].numpy()
             n_out += 1
 
     est = NavEstimate(
@@ -410,6 +415,7 @@ def run_filter(
         "gyr": out_bg[:n_out],
         "fog": out_bf[:n_out],
         "wheel_scale": out_ws[:n_out],
+        "gps_err": out_ge[:n_out],
     }
     _ = (BA, BG, BF, PropagationDiagnostics)
     return RunResult(

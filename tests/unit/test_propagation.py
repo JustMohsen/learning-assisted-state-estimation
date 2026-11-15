@@ -28,6 +28,7 @@ def _state(seed: int = 0) -> NavState:
         b_fog=1e-4 * torch.randn(1, 1, generator=g, dtype=D),
         wheel_scale=torch.ones(1, 1, dtype=D),
         gps_err=torch.tensor([[0.7, -0.4]], dtype=D),
+        grade=torch.tensor([[0.03, -0.02]], dtype=D),
     )
 
 
@@ -71,6 +72,7 @@ def test_mean_matches_strapdown_without_fog() -> None:
         torch.zeros(1, 3, dtype=D),
         torch.zeros(1, 1, dtype=D),
         torch.ones(1, 1, dtype=D),
+        torch.zeros(1, 2, dtype=D),
         torch.zeros(1, 2, dtype=D),
     )
     P = torch.eye(N_ERR, dtype=D)[None]

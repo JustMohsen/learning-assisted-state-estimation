@@ -61,7 +61,10 @@ class NonholonomicConfig(Config):
     sigma_lateral_mps: float = 0.1
     # Vertical part: "off"; "body" = body-z axle velocity ~ 0 (biased by v sin(pitch));
     # "level" = world-vertical axle velocity ~ 0 (pitch-independent; slopes within sigma).
-    vertical_mode: Literal["off", "body", "level"] = "off"
+    # "grade": the axle follows a terrain with estimated slope: v_D = -(grad h . v_horizontal)
+    vertical_mode: Literal["off", "body", "level", "grade"] = "off"
+    grade_prior_sigma: float = 0.05  # initial terrain-gradient sigma per axis (rise/run)
+    grade_rw_per_sqrt_m: float = 0.01  # terrain-gradient random walk per sqrt(metre travelled)
     sigma_vertical_mps: float = 0.1
     gate_prob: float = 0.999
 
@@ -166,6 +169,7 @@ class FilterParams:
     earth_rate_w: Tensor  # (3,) Earth rotation in NED (zeros if not compensated)
     gps_gm_tau_s: float = 55.0  # GPS-error correlation time
     gps_gm_var: float = 0.0  # GPS-error stationary variance (0 = state disabled)
+    grade_rw_per_sqrt_m: float = 0.0  # terrain-gradient random walk (0 = state disabled)
 
     @classmethod
     def build(cls, cal: NcltCalibration, cfg: FilterConfig) -> FilterParams:
@@ -189,4 +193,7 @@ class FilterParams:
             ),
             gps_gm_tau_s=cfg.gnss.error_gm_tau_s,
             gps_gm_var=cfg.gnss.error_gm_sigma_m**2 if cfg.gnss.error_state else 0.0,
+            grade_rw_per_sqrt_m=cfg.nonholonomic.grade_rw_per_sqrt_m
+            if cfg.nonholonomic.vertical_mode == "grade"
+            else 0.0,
         )

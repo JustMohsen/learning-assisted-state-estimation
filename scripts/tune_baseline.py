@@ -57,9 +57,10 @@ def configs(stage: str = "1") -> dict[str, FilterConfig]:
         return out
     if (
         stage == "r7b"
-    ):  # revision: lateral sigma x vertical mode (off / body / level), on the r7a winner
+    ):  # revision: lateral sigma x vertical mode (off / level / grade), on the r7a winner
+        # ("body" dropped: biased by v sin(pitch) on the Segway, superseded by "level")
         win = load_filter_config(_arg(2, "baseline"))
-        for nhc, vert in itertools.product((0.05, 0.1, 0.2), ("off", "body", "level")):
+        for nhc, vert in itertools.product((0.05, 0.1, 0.2), ("off", "level", "grade")):
             name = f"r7b_nhc{nhc:g}_vert{vert}"
             out[name] = win.model_copy(
                 update={

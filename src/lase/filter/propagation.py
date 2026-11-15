@@ -24,7 +24,7 @@ from lase.filter.so3 import (
     so3_exp,
     so3_right_jacobian,
 )
-from lase.filter.state import BA, BF, BG, GE, N_ERR, P_, TH, V_, WS, NavState
+from lase.filter.state import BA, BF, BG, GE, GR, N_ERR, P_, TH, V_, WS, NavState
 
 
 @dataclass(frozen=True)
@@ -96,6 +96,7 @@ def propagate(
         b_fog=state.b_fog,
         wheel_scale=state.wheel_scale,
         gps_err=state.gps_err * gm_phi[:, None],
+        grade=state.grade,
     )
 
     # --- error-state transition F (first order) ---
@@ -138,6 +139,9 @@ def propagate(
     Q[:, WS, WS] = (noise.wheel_scale_rw**2 * dt)[:, None, None]
     F[:, GE, GE] = eye3[:, :2, :2] * gm_phi[:, None, None]
     Q[:, GE, GE] = eye3[:, :2, :2] * (gm_var * (1 - gm_phi**2))[:, None, None]
+    # terrain slope changes with distance travelled, not time (none while standing)
+    dist = torch.linalg.vector_norm(state.v_w[:, :2], dim=-1) * dt
+    Q[:, GR, GR] = eye3[:, :2, :2] * (params.grade_rw_per_sqrt_m**2 * dist)[:, None, None]
 
     P_new = F @ P @ F.transpose(-1, -2) + Q
     P_new = 0.5 * (P_new + P_new.transpose(-1, -2))
@@ -146,7 +150,7 @@ def propagate(
 
 
 def boxminus(a: NavState, b: NavState) -> Tensor:
-    """Error-state difference ``a ⊟ b`` (B, 19): additive except attitude Log(C_b^T C_a)."""
+    """Error-state difference ``a ⊟ b`` (B, 20): additive except attitude Log(C_b^T C_a)."""
     from lase.filter.so3 import so3_log
 
     dth = so3_log(b.C_wb.transpose(-1, -2) @ a.C_wb)
@@ -160,6 +164,7 @@ def boxminus(a: NavState, b: NavState) -> Tensor:
             a.b_fog - b.b_fog,
             a.wheel_scale - b.wheel_scale,
             a.gps_err - b.gps_err,
+            a.grade - b.grade,
         ],
         dim=-1,
     )

@@ -16,7 +16,7 @@ from torch import Tensor
 from lase.filter.learned import HeadOutputs
 from lase.filter.params import FilterParams, GnssUpdateConfig, NonholonomicConfig, WheelUpdateConfig
 from lase.filter.so3 import skew
-from lase.filter.state import GE, N_ERR, P_, TH, V_, WS, NavState
+from lase.filter.state import GE, GR, N_ERR, P_, TH, V_, WS, NavState
 
 
 @dataclass(frozen=True)
@@ -96,6 +96,51 @@ def rolling_direction(C: Tensor) -> tuple[Tensor, Tensor]:
     return n / norm, norm
 
 
+def rolling_speed_with_jacobian(
+    state: NavState, omega_b: Tensor, params: FilterParams
+) -> tuple[Tensor, Tensor, Tensor]:
+    """Rolling speed V = f . v_axle (B,), the direction f (B, 3), and dV/dtheta (B, 3).
+
+    d f / d theta: n = (C e_y) x d, dn = [d]x C [e_y]x dtheta, df = (I - f f^T)/|n| dn;
+    v_axle = v - C (omega x l): d v_axle / d theta = C [omega x l]x.
+    """
+    C = state.C_wb
+    f, norm = rolling_direction(C)
+    u = axle_velocity_world(state, omega_b, params)
+    v_roll = (f * u).sum(-1)
+    B = C.shape[0]
+    eye3 = torch.eye(3, dtype=C.dtype).expand(B, 3, 3)
+    e_y = torch.tensor([0.0, 1.0, 0.0], dtype=C.dtype).expand(B, 3)
+    down = torch.tensor([0.0, 0.0, 1.0], dtype=C.dtype).expand(B, 3)
+    lever = torch.linalg.cross(omega_b, params.l_imu.expand_as(omega_b))
+    proj = (eye3 - f[..., None] * f[..., None, :]) / norm[..., None]
+    df_dth = proj @ skew(down) @ C @ skew(e_y)
+    du_dth = C @ skew(lever)
+    dv = (u[:, None, :] @ df_dth)[:, 0] + (f[:, None, :] @ du_dth)[:, 0]
+    return v_roll, f, dv
+
+
+def terrain_following_row(
+    state: NavState, omega_b: Tensor, params: FilterParams
+) -> tuple[Tensor, Tensor]:
+    """Terrain-following residual h = u_D + g_N u_N + g_E u_E (B,) and its Jacobian (B, N_ERR).
+
+    The axle stays on the ground, h(N, E): its down-velocity is -(grad h . horizontal velocity).
+    The gradient g is estimated, so slopes are allowed; only motion off the terrain is penalised.
+    u = v - C (omega x l), so du/dv = I and du/dtheta = C [omega x l]x.
+    """
+    C = state.C_wb
+    u = axle_velocity_world(state, omega_b, params)
+    g = state.grade
+    a = torch.cat([g, torch.ones_like(g[:, :1])], dim=-1)  # d h / d u
+    lever = torch.linalg.cross(omega_b, params.l_imu.expand_as(omega_b))
+    H = torch.zeros(C.shape[0], N_ERR, dtype=C.dtype)
+    H[:, V_] = a
+    H[:, TH] = (a[:, None, :] @ C @ skew(lever))[:, 0]
+    H[:, GR] = u[:, :2]
+    return (a * u).sum(-1), H
+
+
 def wheel_prediction(state: NavState, omega_b: Tensor, params: FilterParams) -> Tensor:
     """Rolling speed of the axle centre (B,), before wheel scale and encoder pitch-rate term."""
     f, _ = rolling_direction(state.C_wb)
@@ -121,25 +166,14 @@ def update_wheel(
     """
     s = state.wheel_scale[:, 0]
     z = 0.5 * (left + right)
-    C = state.C_wb
-    f, norm = rolling_direction(C)
-    u = axle_velocity_world(state, omega_b, params)
-    v_roll = (f * u).sum(-1)
+    v_roll, f, dvroll_dth = rolling_speed_with_jacobian(state, omega_b, params)
     # Encoders measure wheel rotation relative to the chassis: w_enc = V/R + w_pitch, so the
     # reported speed contains R * q (q = body pitch rate, gyro y; Phase 3 review).
     h = s * v_roll + cfg.encoder_pitch_coef_m * omega_b[:, 1] + learned.wheel_residual[:, 0]
     B = P.shape[0]
-    eye3 = torch.eye(3, dtype=P.dtype).expand(B, 3, 3)
-    e_y = torch.tensor([0.0, 1.0, 0.0], dtype=P.dtype).expand(B, 3)
-    down = torch.tensor([0.0, 0.0, 1.0], dtype=P.dtype).expand(B, 3)
-    lever = torch.linalg.cross(omega_b, params.l_imu.expand_as(omega_b))
-    # d f / d theta: n = (C e_y) x d, dn = [d]x C [e_y]x dtheta, df = (I - f f^T)/|n| dn
-    proj = (eye3 - f[..., None] * f[..., None, :]) / norm[..., None]
-    df_dth = proj @ skew(down) @ C @ skew(e_y)
-    du_dth = C @ skew(lever)  # u = v - C (omega x l): du = C [omega x l]x dtheta
     H = torch.zeros(B, 1, N_ERR, dtype=P.dtype)
     H[:, 0, V_] = s[:, None] * f
-    H[:, 0, TH] = s[:, None] * ((u[:, None, :] @ df_dth)[:, 0] + (f[:, None, :] @ du_dth)[:, 0])
+    H[:, 0, TH] = s[:, None] * dvroll_dth
     H[:, 0, WS] = v_roll
     R = (cfg.sigma_mps**2 * learned.wheel_var_mult[:, 0])[:, None, None]
     return kalman_update(state, P, (z - h)[:, None], H, R, gate_threshold(cfg.gate_prob, 1), apply)
@@ -192,6 +226,10 @@ def update_nonholonomic(
         Hv = torch.zeros(B, N_ERR, dtype=P.dtype)
         Hv[:, 5] = 1.0
         Hv[:, TH] = (C @ skew(lever))[:, 2, :]
+        H_rows.append(Hv)
+    elif cfg.vertical_mode == "grade":
+        hv, Hv = terrain_following_row(state, omega_b, params)
+        h_rows.append(hv)
         H_rows.append(Hv)
     h = torch.stack(h_rows, dim=-1)
     H = torch.stack(H_rows, dim=1)

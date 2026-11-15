@@ -18,7 +18,8 @@ BG = slice(12, 15)
 BF = slice(15, 16)
 WS = slice(16, 17)  # wheel speed scale (fixed when its prior and random walk are zero)
 GE = slice(17, 19)  # GPS horizontal error, north/east (Gauss-Markov; inert when disabled)
-N_ERR = 19
+GR = slice(19, 21)  # terrain height gradient dh/dN, dh/dE (random walk; inert when disabled)
+N_ERR = 21
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class NavState:
     b_fog: Tensor  # (B, 1) FOG axis
     wheel_scale: Tensor  # (B, 1) released wheel speed / true speed
     gps_err: Tensor  # (B, 2) time-correlated GPS error, north/east (m)
+    grade: Tensor  # (B, 2) terrain height gradient (dh/dN, dh/dE; rise/run, heading-independent)
 
     @property
     def C_wb(self) -> Tensor:
@@ -50,6 +52,7 @@ class NavState:
             b_fog=self.b_fog + dx[:, BF],
             wheel_scale=self.wheel_scale + dx[:, WS],
             gps_err=self.gps_err + dx[:, GE],
+            grade=self.grade + dx[:, GR],
         )
 
 

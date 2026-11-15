@@ -30,6 +30,7 @@ def _state() -> NavState:
         b_fog=torch.zeros(1, 1, dtype=D),
         wheel_scale=torch.full((1, 1), 1.05, dtype=D),
         gps_err=torch.tensor([[0.7, -0.4]], dtype=D),
+        grade=torch.tensor([[0.03, -0.02]], dtype=D),
     )
 
 
@@ -55,6 +56,7 @@ def test_wheel_jacobian_matches_autograd() -> None:
         x0.b_fog,
         x0.wheel_scale,
         x0.gps_err,
+        x0.grade,
     )
     omega = torch.tensor([[0.05, -0.2, 0.3]], dtype=D)
     J = _H_numeric(
@@ -104,6 +106,7 @@ def test_rolling_speed_is_pitch_independent() -> None:
             torch.zeros(1, 3, dtype=D),
             torch.zeros(1, 1, dtype=D),
             torch.ones(1, 1, dtype=D),
+            torch.zeros(1, 2, dtype=D),
             torch.zeros(1, 2, dtype=D),
         )
         assert float(wheel_prediction(x, omega, params)[0]) == pytest.approx(1.4, abs=1e-12)
@@ -232,3 +235,39 @@ def test_nonholonomic_level_vertical_jacobian_and_pitch_independence() -> None:
     cfg = NonholonomicConfig(enabled=True, vertical_mode="level")
     _, _, d = update_nonholonomic(x0, torch.eye(N_ERR, dtype=D)[None], omega, params, cfg)
     assert d.innovation.shape == (1, 2)
+
+
+def test_terrain_following_jacobian_matches_autograd() -> None:
+    from lase.filter.params import NonholonomicConfig
+    from lase.filter.updates import terrain_following_row, update_nonholonomic
+
+    params = FilterParams.build(load_calibration(), FilterConfig())
+    x0 = _state()
+    omega = torch.tensor([[0.05, -0.2, 0.3]], dtype=D)
+    J = _H_numeric(lambda x: terrain_following_row(x, omega, params)[0][:, None], x0)
+    _, H = terrain_following_row(x0, omega, params)
+    np.testing.assert_allclose(H[0].numpy(), J[0].numpy(), atol=1e-10)
+    cfg = NonholonomicConfig(enabled=True, vertical_mode="grade")
+    _, _, d = update_nonholonomic(x0, torch.eye(N_ERR, dtype=D)[None], omega, params, cfg)
+    assert d.innovation.shape == (1, 2)
+
+
+def test_terrain_following_on_a_slope_is_zero() -> None:
+    from lase.filter.updates import terrain_following_row
+
+    params = FilterParams.build(load_calibration(), FilterConfig())
+    x0 = _state()
+    # climbing a 5% slope northwards at 1 m/s, no rotation: axle down-velocity -0.05
+    x = NavState(
+        x0.p_w,
+        torch.tensor([[1.0, 0.0, -0.05]], dtype=D),
+        x0.q_wb,
+        x0.b_acc,
+        x0.b_gyr,
+        x0.b_fog,
+        x0.wheel_scale,
+        x0.gps_err,
+        torch.tensor([[0.05, 0.0]], dtype=D),
+    )
+    h, _ = terrain_following_row(x, torch.zeros(1, 3, dtype=D), params)
+    assert abs(float(h[0])) < 1e-12
