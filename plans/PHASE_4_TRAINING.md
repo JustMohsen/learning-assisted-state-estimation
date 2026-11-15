@@ -14,6 +14,18 @@
 - B trained on training days, selected on validation days, and compared with A on the validation days;
 - test days untouched.
 
+## 1a. Inputs from Phase 3 (15 November 2026)
+
+Phase 3 decisions and findings that shape Phase 4:
+
+| Topic | Phase 3 outcome | Consequence for Phase 4 |
+|---|---|---|
+| Frames | Filter state = IMU state (MS25; 0.71 m above the axle, 0.11 m back, 0.18 m left). Wheel and GPS updates use 3D lever arms. Output and scoring are at the axle centre (NCLT reference point); only horizontal position, horizontal velocity and heading are scored. | The training-mode filter outputs at the axle centre exactly like the Phase 3 runner; the task loss uses the same scored quantities. |
+| Wheel model | Predicted mean wheel speed = `scale · V_roll + R_w · q`. V_roll is the axle's horizontal speed along the heading (IMU velocity minus the lever-arm swing `C(ω × l)`). `R_w · q` (R_w = 0.24 m, q = gyro pitch rate) is the encoder effect. Kinematics only: no joint state, no dynamics. | `R_w` is a stage-2 constant anchored at 0.24 m (σ_anchor ≈ 0.04 m, from the measured 0.17–0.24 m range). |
+| No kinetics | NCLT has no torque, current or command data; the IMU measures the effect of the forces directly, so no dynamic model. | The lean-to-acceleration coupling of the balance controller is a candidate learned effect for the network (Phase 5), not a constant in B. |
+| Left/right wheels | Not used for yaw rate in the filter. Measured on 5 training days (1 s windows): left/right scale difference +0.75 to +0.99% in every session (left reads higher); wheel turn-rate noise ~0.03 rad/s (≈1,500× FOG, ≈15× MEMS gyro); standstill is not a clean no-rotation reference (1.55° apparent turn vs 0.21° from the FOG over 2.6 min). Decision: no wheel yaw-rate update, no separate left/right scale or difference states. | **Keep left and right wheel speeds separately in the training data and caches** (not only their mean), plus the FOG turn rate, so Phase 5 can use them as network inputs: left and right speeds, and a wheel-versus-FOG turn-rate mismatch `(v_L − v_R)/W − r_FOG`, a skid/slip indicator. Expect a ~1% speed-proportional offset in that feature from the left/right scale difference. Not learned in B. |
+| State layout (pending) | Terrain-gradient option `nonholonomic.vertical_mode: grade` adds 2 states (∂h/∂N, ∂h/∂E; indices 19–20, `N_ERR` 19 → 21): the axle follows an estimated slope instead of flat ground. Default (off / level / grade) decided in Phase 3 R7b. | **Phase 4 code uses `N_ERR` and the state slices only, never hard-coded sizes.** Caches of warm-start states and covariances record the state layout in their provenance. If the grade states are on, B also learns their noise (see D1). |
+
 ## 2. Decisions (agreed with the user)
 
 ### D1. What B learns
@@ -27,9 +39,10 @@
 | Lateral constraint | lateral σ (the constraint's trust; scope requirement) |
 | IMU | accelerometer and gyro noise densities; accelerometer and gyro bias random walks |
 | FOG | angle random walk, bias random walk |
+| Terrain gradient (only if the grade states are on) | grade random walk; vertical-constraint σ |
 
 **Stage 2: model constants**, as anchored deviations:
-- encoder pitch coefficient `R_w` (physically ≈ wheel radius);
+- encoder pitch coefficient `R_w` (physically ≈ wheel radius; anchor 0.24 m, σ_anchor ≈ 0.04 m);
 - starting uncertainties of the FOG/gyro bias and wheel-scale states;
 - possibly small mounting corrections, if identifiable.
 
@@ -76,7 +89,7 @@ The baseline runs at ~2 ms per IMU step forward, roughly 6–8 ms with the backw
    - **equivalence test:** with batch size 1 it reproduces the Phase 3 runner to ~1e-9.
 2. **Cached operation schedules:** per session, precompute the exact sequence of operations the runner performs, namely:
    - propagate over each sub-interval, with the interpolated IMU values and FOG increments;
-   - wheel, GPS and lateral-constraint updates, with their measurements;
+   - wheel, GPS and lateral-constraint updates, with their measurements (left and right wheel speeds kept separately, for Phase 5 inputs);
 
    stored as tensors, with provenance. The exact-time splitting and the causal FOG handling are encoded in the schedule.
 3. **Batched masked runner:** B chunks step through their schedules in parallel. At each step every chunk applies the operation it needs, and the others are masked. The Python loop cost is shared across the batch: target B = 32–128.
@@ -132,7 +145,7 @@ flowchart TD
 
 | Step | Output | Check |
 |---|---|---|
-| 1 | Training-mode filter | Matches the Phase 3 runner (B = 1) to ~1e-9 |
+| 1 | Training-mode filter (state-size agnostic: `N_ERR` and slices only) | Matches the Phase 3 runner (B = 1) to ~1e-9, for each state layout in use (with and without the grade states) |
 | 2 | Per-session schedule cache with provenance | Replaying a schedule equals running the event stream |
 | 3 | Batched runner; measured steps/s for forward and backward vs B | Batched results equal per-chunk results |
 | 4 | Loss module (task, innovation NLL, anchor penalty); gradient tests | D5 rows 1–3 pass |
@@ -150,6 +163,7 @@ flowchart TD
 | Learned noise becomes "effective weights" rather than honest noise | Report consistency (NEES/NIS); innovation-likelihood term available (α > 0) |
 | Non-identifiable constants | Anchor penalty plus the identifiability report |
 | Warm-start mismatch (cached state from A, constants from B) | 20 s burn-in; check sensitivity to burn-in length |
+| State layout changes (e.g. grade states) after caches are built | Layout recorded in cache provenance; caches rebuilt automatically when it changes; no hard-coded sizes |
 
 ## 5. Optional experiment: float32 filter (not part of the core plan)
 
