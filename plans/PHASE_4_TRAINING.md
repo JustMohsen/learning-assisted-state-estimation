@@ -234,3 +234,19 @@ Recorded here until the Phase 5 plan exists.
 - The within-session FOG bias change may also be unpredictable from the available inputs.
 - **Better output:** how fast the bias may change. A multiplier on the FOG bias random walk (like the existing trust multipliers) lets the filter estimate the value. Adaptive process noise is more likely to generalise. Caveat (D7): its effect shows over minutes, so training it needs long-horizon chunks.
 - Context-dependent GPS errors (multipath, re-acquisition) stay with the GPS trust multiplier.
+
+## 7. Open items from the pilot (15 November 2026; deferred by the user)
+
+The pilot (`scripts/phase4_pilot.py`, `src/lase/training/`) took shortcuts to get a working B quickly. To revisit:
+
+| # | Item | Pilot choice | To decide |
+|---|---|---|---|
+| O1 | Gradient through the burn-in | Gradient flows through the whole 30 s chunk (`training.windows.grad_through_burn_in: true`). With a no-gradient burn-in the GPS-σ gradient missed most of its effect (−0.009 vs 0.29 on one chunk); cost ~20 s vs ~3 s per chunk | Keep, or longer loss windows / other remedy; revisit D3 |
+| O2 | Phase 3 code change | `src/lase/filter/updates.py`: lateral variance scaling made autograd-safe (`.clone()`; numerically identical) | Confirm with the Phase 3 owner |
+| O3 | Separate training loop | `training/loop.py` copies `run_filter`'s event loop (bitwise equal with neutral outputs) | Merge into one implementation (D3 step 1) |
+| O4 | Learned set | Only GPS, wheel and lateral σ, via the existing variance multipliers | Extend to the full D1 stage-1 set (process noise needs tensor-valued noise parameters) |
+| O5 | Loss target | Dense reference (position, heading, velocity), not graph nodes | Graph-node loss as in D2 |
+| O6 | No schedule cache or batched runner | One process per session, gradients averaged | Steps 2–3 of the work order |
+| O7 | Anchor penalty scaling | Penalty divided by the number of training chunks (prior on the whole training set) | Confirm |
+| O8 | Pilot data and schedule | 9 training days, chunk starts every 30 s, 40 steps × 18 chunks, lr 0.05 | Full training protocol (D6) |
+| O9 | Unit-test runtime | `tests/unit/test_training_loop.py` takes ~85 s | Shorten the simulated segments |

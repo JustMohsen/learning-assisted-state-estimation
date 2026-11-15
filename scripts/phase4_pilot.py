@@ -1,6 +1,6 @@
 """Phase 4 pilot: train method B (GPS, wheel, lateral sigma) and evaluate it on validation days.
 
-    uv run python scripts/phase4_pilot.py [all|cache|train|eval]
+    uv run python scripts/phase4_pilot.py [all|cache|train|eval|compare]
 
 1. cache: run baseline A over the pilot training days, saving state/covariance snapshots
    every ``training.pilot.snapshot_every_s`` (chunk starts).
@@ -176,6 +176,35 @@ def evaluate(p: Parameters, delta: np.ndarray) -> None:
     print(f"wrote {OUT / 'validation_runs_b.csv'}", flush=True)
 
 
+METRICS = [
+    "nodes_pos_median_m",
+    "nodes_pos_p95_m",
+    "nodes_heading_rmse_deg",
+    "rpe60s_nodes_trans_rmse_m",
+    "inj_outage_med_at_30s_m",
+    "inj_outage_med_at_60s_m",
+    "inj_outage_med_at_120s_m",
+    "nees_pos_mean",
+]
+
+
+def compare() -> None:
+    """B vs A on the validation days (outages mode), per day and mean."""
+    a = pd.read_csv(repo_root() / "reports" / "phase3_baseline" / "validation_runs.csv")
+    a = a[(a["mode"] == "outages") & (a["config"] == load_parameters().filter.name)]
+    b = pd.read_csv(OUT / "validation_runs_b.csv")
+    b = b[b["mode"] == "outages"]
+    rows = []
+    for tag, df in (("A", a), ("B pilot", b)):
+        cols = [m for m in METRICS if m in df.columns]
+        for _, r in df.iterrows():
+            rows.append({"method": tag, "date": r["date"], **{m: r[m] for m in cols}})
+        rows.append({"method": tag, "date": "mean", **{m: df[m].mean() for m in cols}})
+    out = pd.DataFrame(rows)
+    out.to_csv(OUT / "comparison_outages.csv", index=False, float_format="%.4g")
+    print(out.to_string(index=False, float_format=lambda x: f"{x:.3g}"))
+
+
 def main() -> int:
     what = sys.argv[1] if len(sys.argv) > 1 else "all"
     p = load_parameters()  # snapshot once
@@ -185,6 +214,8 @@ def main() -> int:
         np.save(RUNS / "delta.npy", train(p))
     if what in ("all", "eval"):
         evaluate(p, np.load(RUNS / "delta.npy"))
+    if what in ("all", "compare"):
+        compare()
     return 0
 
 
