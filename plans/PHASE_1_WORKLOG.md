@@ -24,6 +24,9 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 - **Parquet cache (step 9) deferred:** CSV parsing of a full 87-minute session takes ~0.1 s, so a cache adds complexity without benefit. pyarrow stays installed for later use.
 - **Truncated sessions:** keep 2012-04-29 and 2012-06-15 in the training split as agreed; use only their valid graph nodes and released GT span.
 - **Stationary detection:** heuristic (smoothed wheel speed) for the audit only; refined with IMU variance when bias priors are needed (Phase 3).
+- **FOG sign:** NED yaw = -1 x released FOG angle (V2, all sessions). Recorded as fog_convention.angle_sign_to_ned_yaw; the event payload keeps the released angle and the filter applies the sign.
+- **Wheel geometry:** physical track width 0.560 m; wheel speed scale recorded as a training-median estimate (1.054) with its seasonal drift documented, not hard-coded into loaders.
+- **Validation method:** scales/sign from 1-s window increments (rate regressions on 100 Hz differentiated signals were attenuated by noise, e.g. 0.86-0.90); V1 frame fit on inliers with median residuals (GPS multipath outliers dominated least squares).
 
 ## Steps
 
@@ -31,18 +34,20 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 - [x] 2. Downloader: `src/lase/data/download.py` + `scripts/download_nclt.py` (resumable, SHA-256 recorded in `configs/data/nclt_files.yaml`, selective extraction). Bring-up on 2013-01-10 and one training day; list archive contents.
 - [x] 3. Full download of all 27 sessions (background), verify checksums, record extracted size
 - [x] 4. Raw loaders per sensor with schemas and validity flags + synthetic-fixture tests
-- [ ] 5. Calibration research and `configs/data/nclt_calibration.yaml` (origin, frames, lever arms, track width, FOG axis/sign), every value sourced or marked estimated
+- [x] 5. Calibration research and `configs/data/nclt_calibration.yaml` (origin, frames, lever arms, track width, FOG axis/sign), every value sourced or marked estimated
 - [x] 6. Conversions: geodesy (exact WGS-84 → NED), FOG unwrap/increments, unit checks + tests
 - [x] 7. Reference: dense poses, graph nodes, derived velocity with masks, separate API
 - [x] 8. Session object + causal event stream + tests (ordering, ties, windows, no reference leakage)
 - [x] 9. Parquet cache keyed by loader version
 - [x] 10. All-session audit → `reports/phase1_audit/`
-- [ ] 11. Validation checks V1–V5 → `reports/phase1_audit/`
-- [ ] 12. Phase 1 summary; update README status
+- [x] 11. Validation checks V1–V5 → `reports/phase1_audit/`
+- [x] 12. Phase 1 summary; update README status
 
 ## Questions for the user
 
-(none yet)
+- **Wheel scale in the baseline/pilot:** the scope fixes wheel scale in the pilot, but data shows 1.044-1.085 (drifting over months). Options: (a) estimate wheel scale as a slow analytical state in the Phase 3 baseline (recommended: cheap, physically motivated, fair to all methods); (b) fixed training-median 1.054; (c) keep 1.0 and let learning absorb it. This affects baseline fairness and the scope's pilot definition.
+- **Validation data volume:** validation is 97 min, ~80 of them from 2013-02-23 (2013-01-10 is 17 min). The split stays as agreed unless you want to revisit it; if checkpoint selection proves noisy, cross-validation over training days is an alternative.
+- **Consumer GPS mode-2 fixes** (20-53% of fixes) may deserve different noise than mode-3: a Phase 3 tuning detail, noted for awareness.
 
 ## Log
 
@@ -59,7 +64,39 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 - 2026-11-15 01:33: Step 10 done: scripts/audit_nclt.py -> reports/phase1_audit/ (sessions.csv, spans.json, durations_outages.png, sample_intervals.png). 36.3 h total (train 30.8 h, validation 1.6 h, test 3.9 h). No non-monotonic/duplicate timestamps in any stream. GPS num_sats always 0; GPS invalid rows ~0 except 2012-02-18 (1.6%). Natural GPS outages (>5 s) 4-18 min per session, longest 837 s; 2012-04-29 has none and almost no 2D fixes. GT ~148 Hz, starts ~0-1 s after sensors, ends up to 65 s before. Graph nodes every 3.6 s / ~5 m (not 8 m), position std ~8 cm. Wheel gaps >0.2 s occur 2-23 times per session.
 - 2026-11-15 01:33: Finding: 2012-04-29 and 2012-06-15 releases are truncated (43 and 55 min); their covariance files list 365/334 graph nodes beyond the released GT. Fixed by a node validity mask (dense GT row within 50 ms).
 - 2026-11-15 01:33: Finding: the Segway self-balances, so wheels jitter up to ~0.08 m/s at rest; strict zero-speed stationary detection never triggers. Audit now uses 1 s smoothed forward speed < 0.05 m/s for >= 5 s (heuristic): 3-17 stationary periods per session.
+- 2026-11-15 01:38: Step 5 done: calibration config complete. Published values from paper (origin, linearisation, Table 4 mounts); estimated from data: FOG sign (-1), physical track width 0.560 m, raw-units width 0.589 m, wheel speed scale 1.054 (training medians).
+- 2026-11-15 01:38: Step 11 done: crosscheck.py + scripts/validate_phase1.py + tests/validation/test_phase1.py (17 pass). V1 GPS median 2.9-5.6 m, inlier rotation <=0.32 deg, scale <=0.53%. V2 IMU scale ~+0.998, FOG scale ~-0.998 (sign reversed), lags within ~2.5 ms. V3 wheel scale 1.044-1.085 drifting upward over the year. V4 track width R2 0.96-0.99. V5 integrity passes.
+- 2026-11-15 01:38: Step 12 done: reports/phase1_audit/README.md (results, answers to open questions, implications); README status updated to Phase 1 complete; local_data README documents scripted download; Phase 1 plan links to outcome.
 
 ## Summary
 
-(written when Phase 1 completes)
+**Phase 1 is complete** (15 November 2026, one overnight session). All 12 steps are done; step 9 (Parquet cache) was evaluated and deliberately deferred.
+
+**Built** (`src/lase/data/`, 60 tests: 43 unit + 17 validation):
+- `splits`, `download`: split manifest; resumable downloader with SHA-256 manifest; `scripts/download_nclt.py`
+- `raw`: loaders for all 12 file formats, with per-row validity flags
+- `calibration`: sourced config (`configs/data/nclt_calibration.yaml`)
+- `geodesy`, `conversions`, `geometry/euler`: frames and conversions
+- `reference`: dense poses, graph nodes, derived velocity
+- `session`, `events`: role-separated access and a causal event stream
+- `audit`, `crosscheck`: audit and validation, with `scripts/audit_nclt.py` and `scripts/validate_phase1.py`
+
+**Data:** all 27 sessions (36.3 h) in `local_data/` (5.5 GB raw + 6.9 GB extracted), checksummed.
+
+**Key results** (details in [reports/phase1_audit/README.md](../reports/phase1_audit/README.md)):
+- Frames, timing, signs and scales are all validated against the reference.
+- GPS median error is 3–5.6 m, with multipath outliers.
+- **The FOG sign is reversed.** IMU and FOG timing match the reference to about 2 ms.
+- **Wheel speeds read 4–8% high,** drifting over the year.
+- The physical track width is 0.560 m.
+- Two training sessions are truncated releases (handled).
+- The Segway self-balances, which affects stationary detection.
+
+**Decisions made autonomously:** see *Decisions made* above. The most consequential:
+- using the paper's frame linearisation instead of an exact geodetic transform;
+- the FOG sign;
+- deferring the cache.
+
+**Needs the user:** see *Questions for the user*. The most important is whether the baseline should estimate wheel scale.
+
+**Not done (by design):** Phase 2 has not been started.

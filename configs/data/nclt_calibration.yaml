@@ -47,13 +47,28 @@ sensors:                         # x_body,sensor: position of sensor in body fra
     status: published
     source: paper Table 4 (NovAtel RTK; diagnostic only)
 
+fog_convention:
+  angle_sign_to_ned_yaw: -1.0    # NED yaw (clockwise from above) = -1 x released FOG angle
+  status: estimated
+  source: >-
+    Phase 1 check V2 (reports/phase1_audit/validation.csv): 1-s FOG heading changes regress on
+    reference heading changes with slope -0.988..-1.000 in all 27 sessions; IMU gyro z has
+    slope +0.988..+0.9995 (no sign change needed). FOG leads the reference by ~1-2 ms.
+
 wheels:
   speed_reference: >-
     Mean of left and right speeds is the speed at the centre of the wheelbase
     (paper Sec. 4, Eq. 4), i.e. at the body-frame origin.
-  track_width_m: null            # not published; to be estimated in Phase 1 check V4
-  track_width_status: to_estimate
-  source: paper Sec. 4
+  track_width_m: 0.560           # physical track width, in true metres
+  track_width_status: estimated
+  effective_track_width_raw_m: 0.589   # track width in raw (unscaled) wheel-speed units
+  speed_scale: 1.054             # released wheel speed / reference forward speed
+  speed_scale_status: estimated
+  source: >-
+    Not published (paper Sec. 4). Estimated from training days in Phase 1 checks V3/V4:
+    (left - right) = W_raw x FOG yaw rate, R^2 0.96-0.99, median W_raw 0.589 m; wheel speed
+    scale median 1.054, drifting from ~1.044 (early 2012) to ~1.085 (Feb 2013), consistent
+    with tyre wear/pressure; physical width W_raw / scale = 0.560 m (std 3 mm across sessions).
 
 timing:
   fog: "timestamped by message arrival time (paper Sec. 5.5); expect jitter/latency"

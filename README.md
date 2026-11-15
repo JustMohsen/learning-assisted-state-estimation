@@ -2,7 +2,7 @@
 
 A physics-based Kalman filter for ground-robot navigation, with a small causal neural network (GRU) that adapts the filter's normally hand-tuned parts to the current situation. The network is trained end to end through the filter.
 
-**Current phase:** Phase 0 complete (repository, environment, conventions). Next: Phase 1, data foundation. No estimator, trained model or results yet.
+**Current phase:** Phase 1 (data foundation) complete: all 27 NCLT sessions downloaded, loaded, audited and cross-validated ([report](./reports/phase1_audit/README.md)). Next: Phase 2, simulator and evaluation harness. No estimator, trained model or results yet.
 
 ## In one minute
 
@@ -53,7 +53,7 @@ flowchart LR
     P6 --> P7["7. Final<br/>evaluation"]
 
     classDef done fill:#dcfce7,stroke:#16a34a,color:#1a1a1a
-    class P0 done
+    class P0,P1 done
 ```
 
 Comparator tracks run alongside: reproducing the published NCLT KalmanNet (from Phase 0) and a learned-gain filter on our inputs (from Phase 4). Full plan: [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md).

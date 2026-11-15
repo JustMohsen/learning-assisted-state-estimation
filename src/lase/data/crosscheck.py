@@ -45,13 +45,18 @@ def fit_similarity_2d(src: F64, dst: F64) -> tuple[float, float, F64]:
 
 @dataclass(frozen=True)
 class GpsCheck:
-    """V1: consumer GPS vs reference antenna position (horizontal)."""
+    """V1: consumer GPS vs reference antenna position (horizontal).
+
+    Consumer GPS has large multipath outliers, so the frame check (rotation, scale) is
+    fitted on inliers only and residual offsets are reported as medians.
+    """
 
     n: int
     median_err_m: float
     p95_err_m: float
-    mean_residual_ne_m: tuple[float, float]
-    rotation_deg: float
+    inlier_frac: float  # error below max(10 m, 3 x median)
+    median_residual_ne_m: tuple[float, float]
+    rotation_deg: float  # inlier similarity fit, GPS vs reference
     scale_minus_1: float
 
 
@@ -67,43 +72,43 @@ def check_gps(streams: SensorStreams, ref: Reference, cal: NcltCalibration) -> G
     meas = streams.gnss_ned[m][ok]
     r = meas[:, :2] - p_ant[:, :2]
     err = np.linalg.norm(r, axis=1)
-    ang, scale, _ = fit_similarity_2d(p_ant[:, :2], meas[:, :2])
+    med = float(np.median(err))
+    inl = err < max(10.0, 3.0 * med)
+    ang, scale, _ = fit_similarity_2d(p_ant[inl, :2], meas[inl, :2])
     return GpsCheck(
         n=int(ok.sum()),
-        median_err_m=float(np.median(err)),
+        median_err_m=med,
         p95_err_m=float(np.percentile(err, 95)),
-        mean_residual_ne_m=(float(r[:, 0].mean()), float(r[:, 1].mean())),
+        inlier_frac=float(inl.mean()),
+        median_residual_ne_m=(float(np.median(r[:, 0])), float(np.median(r[:, 1]))),
         rotation_deg=float(np.degrees(ang)),
         scale_minus_1=scale - 1.0,
     )
 
 
-def xcorr_lag(a: F64, b: F64, max_lag: int) -> tuple[int, float]:
-    """Lag (samples) maximising the normalised correlation of ``a[k]`` with ``b[k + lag]``."""
-    best = (0, -np.inf)
+def xcorr_lag(a: F64, b: F64, max_lag: int) -> tuple[float, float]:
+    """Lag (samples) maximising ``|corr(a[k], b[k + lag])|``, and the signed correlation there.
+
+    The lag is refined below one sample by fitting a parabola through the peak.
+    """
     a0 = (a - a.mean()) / a.std()
     b0 = (b - b.mean()) / b.std()
     n = len(a0)
-    for lag in range(-max_lag, max_lag + 1):
+    lags = np.arange(-max_lag, max_lag + 1)
+    c = np.empty(len(lags))
+    for i, lag in enumerate(lags):
         if lag >= 0:
-            c = float(np.mean(a0[: n - lag] * b0[lag:]))
+            c[i] = np.mean(a0[: n - lag] * b0[lag:])
         else:
-            c = float(np.mean(a0[-lag:] * b0[: n + lag]))
-        if c > best[1]:
-            best = (lag, c)
-    return best
-
-
-@dataclass(frozen=True)
-class YawRateCheck:
-    """V2: yaw-rate agreement between IMU gyro z, FOG and reference heading derivative."""
-
-    fog_lag_ms: float  # positive: FOG lags the reference
-    fog_corr: float
-    fog_slope: float  # FOG rate regressed on reference rate
-    imu_lag_ms: float
-    imu_corr: float
-    imu_slope: float
+            c[i] = np.mean(a0[-lag:] * b0[: n + lag])
+    k = int(np.argmax(np.abs(c)))
+    frac = 0.0
+    if 0 < k < len(c) - 1:
+        y0, y1, y2 = np.abs(c[k - 1 : k + 2])
+        denom = y0 - 2 * y1 + y2
+        if denom != 0:
+            frac = float(0.5 * (y0 - y2) / denom)
+    return float(lags[k]) + frac, float(c[k])
 
 
 def _slope(x: F64, y: F64) -> float:
@@ -111,58 +116,113 @@ def _slope(x: F64, y: F64) -> float:
     return float(np.sum(x[m] * y[m]) / np.sum(x[m] ** 2))
 
 
-def yaw_rates(streams: SensorStreams, ref: Reference, grid: I64) -> tuple[F64, F64, F64]:
-    """Reference, FOG and IMU-gyro-z yaw rates (rad/s) on ``grid`` (offline)."""
+def _cumulative_angle(t_us: I64, rate: F64) -> F64:
+    """Trapezoidal integral of a rate signal (rad), starting at 0."""
+    dt = np.diff(t_us) * 1e-6
+    out = np.zeros(len(t_us))
+    out[1:] = np.cumsum(0.5 * (rate[1:] + rate[:-1]) * dt)
+    return out
+
+
+@dataclass(frozen=True)
+class YawRateCheck:
+    """V2: yaw agreement between IMU gyro z, FOG and reference heading.
+
+    Lags come from cross-correlating 100 Hz rates (positive: sensor lags the reference).
+    Scales are slopes of 1-s heading increments (sensor on reference), which avoids the
+    attenuation that differentiation noise causes in rate regressions. A negative slope
+    means the sensor's sign is opposite to NED yaw (positive = clockwise from above).
+    """
+
+    fog_lag_ms: float
+    fog_corr: float
+    fog_scale: float
+    imu_lag_ms: float
+    imu_corr: float
+    imu_scale: float
+
+
+def heading_increments(
+    streams: SensorStreams, ref: Reference, grid: I64, window_us: int = 1_000_000
+) -> tuple[F64, F64, F64]:
+    """Reference, FOG and IMU-gyro-z heading changes over ``[t - w/2, t + w/2]`` (offline)."""
     m = ref.gt.valid
-    gt_rate = rate_on_grid(ref.gt.t_us[m], np.unwrap(ref.gt.rpy[m, 2]), grid)
-    fog_rate = rate_on_grid(streams.fog.t_us, streams.fog_angle, grid)
-    imu_rate = interp_at(streams.imu.t_us, streams.imu.gyr[:, 2], grid)
-    return gt_rate, fog_rate, imu_rate
+    h = window_us // 2
+    gt_yaw = np.unwrap(ref.gt.rpy[m, 2])
+    imu_ang = _cumulative_angle(streams.imu.t_us, streams.imu.gyr[:, 2])
+
+    def inc(t: I64, a: F64) -> F64:
+        out: F64 = interp_at(t, a, grid + h) - interp_at(t, a, grid - h)
+        return out
+
+    return (
+        inc(ref.gt.t_us[m], gt_yaw),
+        inc(streams.fog.t_us, streams.fog_angle),
+        inc(streams.imu.t_us, imu_ang),
+    )
 
 
 def check_yaw_rate(
     streams: SensorStreams, ref: Reference, rate_hz: float = 100.0, max_lag_s: float = 1.0
 ) -> YawRateCheck:
-    """Cross-correlate yaw rates to find time offsets, signs and scales."""
+    """Find time offsets (rate cross-correlation), signs and scales (1-s increments)."""
     grid = common_grid(streams, ref, rate_hz)
-    gt_rate, fog_rate, imu_rate = yaw_rates(streams, ref, grid)
+    m = ref.gt.valid
+    gt_rate = rate_on_grid(ref.gt.t_us[m], np.unwrap(ref.gt.rpy[m, 2]), grid)
+    fog_rate = rate_on_grid(streams.fog.t_us, streams.fog_angle, grid)
+    imu_rate = interp_at(streams.imu.t_us, streams.imu.gyr[:, 2], grid)
     L = int(max_lag_s * rate_hz)
     fl, fc = xcorr_lag(gt_rate, fog_rate, L)
     il, ic = xcorr_lag(gt_rate, imu_rate, L)
-    # signed correlation at zero lag reveals sign flips (xcorr maximises positive correlation)
+    coarse = common_grid(streams, ref, 10.0)
+    d_gt, d_fog, d_imu = heading_increments(streams, ref, coarse)
     return YawRateCheck(
         fog_lag_ms=fl * 1e3 / rate_hz,
         fog_corr=fc,
-        fog_slope=_slope(gt_rate, fog_rate),
+        fog_scale=_slope(d_gt, d_fog),
         imu_lag_ms=il * 1e3 / rate_hz,
         imu_corr=ic,
-        imu_slope=_slope(gt_rate, imu_rate),
+        imu_scale=_slope(d_gt, d_imu),
     )
 
 
 @dataclass(frozen=True)
 class WheelSpeedCheck:
-    """V3: mean wheel speed vs reference forward speed."""
+    """V3: mean wheel speed vs reference forward speed, both averaged over 1-s windows."""
 
     n: int
-    slope: float  # wheel speed regressed on reference speed
+    scale: float  # wheel speed regressed on reference speed
     median_abs_residual_mps: float
     mean_residual_mps: float
 
 
+def _window_mean(t_us: I64, x: F64, grid: I64, window_us: int) -> F64:
+    """*Offline* mean of ``x`` over ``[t - w/2, t + w/2]`` via its time integral."""
+    integral = _cumulative_angle(t_us, x)
+    h = window_us // 2
+    out: F64 = (interp_at(t_us, integral, grid + h) - interp_at(t_us, integral, grid - h)) / (
+        window_us * 1e-6
+    )
+    return out
+
+
 def check_wheel_speed(
-    streams: SensorStreams, ref: Reference, rate_hz: float = 10.0
+    streams: SensorStreams,
+    ref: Reference,
+    rate_hz: float = 10.0,
+    window_us: int = 1_000_000,
+    min_speed_mps: float = 0.3,
 ) -> WheelSpeedCheck:
     """Compare the wheelbase-centre speed (paper Eq. 4) with the reference forward speed."""
     grid = common_grid(streams, ref, rate_hz)
     w = streams.wheels
-    v_wheel = interp_at(w.t_us, wheel_forward_speed(w.left, w.right), grid)
-    v_ref, mask = ref.forward_speed(grid)
-    m = mask & np.isfinite(v_wheel) & (np.abs(v_ref) > 0.3)
+    v_wheel = _window_mean(w.t_us, wheel_forward_speed(w.left, w.right), grid, window_us)
+    v_ref, mask = ref.forward_speed(grid, half_window_us=window_us // 2)
+    m = mask & np.isfinite(v_wheel) & (np.abs(v_ref) > min_speed_mps)
     r = v_wheel[m] - v_ref[m]
     return WheelSpeedCheck(
         n=int(m.sum()),
-        slope=_slope(v_ref[m], v_wheel[m]),
+        scale=_slope(v_ref[m], v_wheel[m]),
         median_abs_residual_mps=float(np.median(np.abs(r))),
         mean_residual_mps=float(np.mean(r)),
     )
@@ -178,14 +238,31 @@ class TrackWidthCheck:
 
 
 def check_track_width(
-    streams: SensorStreams, ref: Reference, fog_sign: float = 1.0, rate_hz: float = 10.0
+    streams: SensorStreams,
+    ref: Reference,
+    fog_sign: float = 1.0,
+    rate_hz: float = 10.0,
+    window_us: int = 1_000_000,
+    min_rate_radps: float = 0.05,
 ) -> TrackWidthCheck:
-    """Fit (left - right) = W * yaw_rate over turning samples, with yaw rate from the FOG."""
+    """Fit ``(left - right) = W * yaw_rate`` (1-s window means), with yaw rate from the FOG.
+
+    ``fog_sign`` converts the released FOG angle to NED yaw (positive clockwise).
+    """
     grid = common_grid(streams, ref, rate_hz)
     w = streams.wheels
-    diff = interp_at(w.t_us, w.left - w.right, grid)
-    rate = fog_sign * rate_on_grid(streams.fog.t_us, streams.fog_angle, grid)
-    m = np.isfinite(diff) & np.isfinite(rate) & (np.abs(rate) > 0.05)
+    diff = _window_mean(w.t_us, w.left - w.right, grid, window_us)
+    h = window_us // 2
+    fog = streams.fog
+    rate = (
+        fog_sign
+        * (
+            interp_at(fog.t_us, streams.fog_angle, grid + h)
+            - interp_at(fog.t_us, streams.fog_angle, grid - h)
+        )
+        / (window_us * 1e-6)
+    )
+    m = np.isfinite(diff) & np.isfinite(rate) & (np.abs(rate) > min_rate_radps)
     x, y = rate[m], diff[m]
     W = float(np.sum(x * y) / np.sum(x**2))
     ss_res = float(np.sum((y - W * x) ** 2))

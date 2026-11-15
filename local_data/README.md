@@ -11,10 +11,10 @@ local_data/
 └── nclt/
     ├── raw/                              # downloads, kept unmodified
     │   ├── sensor_data/<date>_sen.tar.gz # IMU, FOG, wheels, GPS, RTK, odometry, ... (compressed)
-    │   ├── ground_truth/groundtruth_<date>.csv   # reference 6-DOF pose (~100 Hz)
+    │   ├── ground_truth/groundtruth_<date>.csv   # reference 6-DOF pose (~148 Hz)
     │   └── covariance/cov_<date>.csv     # reference graph-node covariances
     ├── extracted/<date>/                 # CSVs extracted from the sensor archives
-    └── cache/                            # derived files; safe to delete and rebuild
+    └── download.log                      # log of the last scripted download
 ```
 
 ## Getting the data
@@ -23,9 +23,17 @@ Source: [NCLT dataset](https://robots.engin.umich.edu/nclt/) (University of Mich
 
 Download size for all 27 sessions (checked 15 November 2026): about **2.75 GB** of sensor archives, **2.66 GB** of ground-truth CSVs and **10 MB** of covariances, roughly **5.4 GB** in total before extraction.
 
-**Scripted download (added in Phase 1):** `scripts/download_nclt.py` will fetch by split or date, resume interrupted downloads, verify checksums and extract only the needed CSVs.
+**Scripted download (recommended):**
 
-**Manual download** (until then), per recording date `<date>` (e.g. `2013-01-10`):
+```bash
+uv run python scripts/download_nclt.py --split all        # all 27 sessions (~8 min at ~12 MB/s)
+uv run python scripts/download_nclt.py --split validation # or train / test
+uv run python scripts/download_nclt.py --dates 2013-01-10 # specific dates
+```
+
+It resumes interrupted downloads, verifies each file against the SHA-256 recorded in `configs/data/nclt_files.yaml`, and extracts all 12 sensor CSVs into `nclt/extracted/<date>/`. On disk: about 5.5 GB raw plus 6.9 GB extracted.
+
+**Manual download** (alternative), per recording date `<date>` (e.g. `2013-01-10`):
 
 ```text
 https://s3.us-east-2.amazonaws.com/nclt.perl.engin.umich.edu/sensor_data/<date>_sen.tar.gz

@@ -33,4 +33,6 @@ def test_calibration_loads_with_published_mounts() -> None:
     np.testing.assert_allclose(cal.sensors.imu.l_b, [-0.11, -0.18, -0.71])
     np.testing.assert_allclose(cal.sensors.imu.C_bs, np.eye(3))
     np.testing.assert_allclose(cal.sensors.gps.C_bs, np.eye(3))
-    assert cal.wheels.track_width_m is None
+    assert cal.fog_convention.angle_sign_to_ned_yaw == -1.0
+    assert cal.wheels.track_width_m == pytest.approx(0.560)
+    assert cal.wheels.track_width_status == "estimated"

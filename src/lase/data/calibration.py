@@ -65,12 +65,23 @@ class Sensors(Config):
     rtk: SensorMount
 
 
+class FogConvention(Config):
+    """Sign relating the released FOG angle to NED yaw."""
+
+    angle_sign_to_ned_yaw: float
+    status: Status
+    source: str
+
+
 class Wheels(Config):
-    """Wheel geometry."""
+    """Wheel geometry and speed scale."""
 
     speed_reference: str
     track_width_m: float | None
     track_width_status: Status
+    effective_track_width_raw_m: float | None = None
+    speed_scale: float | None = None
+    speed_scale_status: Status = "to_estimate"
     source: str
 
 
@@ -87,6 +98,7 @@ class NcltCalibration(Config):
     local_frame: LocalFrame
     body_frame: BodyFrame
     sensors: Sensors
+    fog_convention: FogConvention
     wheels: Wheels
     timing: Timing
 
