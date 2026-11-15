@@ -42,8 +42,13 @@ def kalman_update(
     R: Tensor,
     gate: float,
     apply: Tensor | None = None,
+    consider: Tensor | None = None,
 ) -> tuple[NavState, Tensor, UpdateDiagnostics]:
     """Gated error-state Kalman update.
+
+    ``consider`` (N_ERR,) marks Schmidt consider states: their gain rows are zero, so they
+    are never updated, while their uncertainty still enters S and the cross-covariances
+    (the Joseph form below is exact for any gain).
 
     Args:
         r: Innovation ``z - h(x)`` (B, d).
@@ -61,6 +66,8 @@ def kalman_update(
     if apply is not None:
         ok = ok & apply
     K = torch.linalg.solve(S, PHt.transpose(-1, -2)).transpose(-1, -2)  # P H^T S^-1
+    if consider is not None:
+        K = K * (1.0 - consider)[:, None]
     dx = (K @ r[..., None])[..., 0] * ok[:, None]
     eye = torch.eye(N_ERR, dtype=P.dtype)
     IKH = eye - K @ H
@@ -176,7 +183,16 @@ def update_wheel(
     H[:, 0, TH] = s[:, None] * dvroll_dth
     H[:, 0, WS] = v_roll
     R = (cfg.sigma_mps**2 * learned.wheel_var_mult[:, 0])[:, None, None]
-    return kalman_update(state, P, (z - h)[:, None], H, R, gate_threshold(cfg.gate_prob, 1), apply)
+    return kalman_update(
+        state,
+        P,
+        (z - h)[:, None],
+        H,
+        R,
+        gate_threshold(cfg.gate_prob, 1),
+        apply,
+        params.consider_mask,
+    )
 
 
 def axle_velocity_body(state: NavState, omega_b: Tensor, params: FilterParams) -> Tensor:
@@ -238,7 +254,9 @@ def update_nonholonomic(
     R = torch.diag(torch.tensor(var, dtype=P.dtype)).expand(B, d, d).clone()
     if learned is not None:
         R[:, 0, 0] = R[:, 0, 0] * learned.nhc_var_mult[:, 0]
-    return kalman_update(state, P, -h, H, R, gate_threshold(cfg.gate_prob, d))
+    return kalman_update(
+        state, P, -h, H, R, gate_threshold(cfg.gate_prob, d), consider=params.consider_mask
+    )
 
 
 def gnss_prediction(state: NavState, params: FilterParams) -> Tensor:
@@ -268,4 +286,6 @@ def update_gnss(
     sigma = cfg.error_white_sigma_m if cfg.error_state else cfg.sigma_m
     R = torch.diag_embed(sigma**2 * learned.gnss_var_mult)
     r = z_ne - gnss_prediction(state, params)
-    return kalman_update(state, P, r, H, R, gate_threshold(cfg.gate_prob, 2), apply)
+    return kalman_update(
+        state, P, r, H, R, gate_threshold(cfg.gate_prob, 2), apply, params.consider_mask
+    )

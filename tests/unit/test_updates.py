@@ -271,3 +271,41 @@ def test_terrain_following_on_a_slope_is_zero() -> None:
     )
     h, _ = terrain_following_row(x, torch.zeros(1, 3, dtype=D), params)
     assert abs(float(h[0])) < 1e-12
+
+
+def test_consider_state_is_never_updated_but_inflates_uncertainty() -> None:
+    from lase.filter.state import WS
+    from lase.filter.updates import update_wheel, wheel_prediction
+
+    x0 = _state()
+    omega = torch.tensor([[0.0, 0.0, 0.0]], dtype=D)
+    P0 = torch.eye(N_ERR, dtype=D)[None] * 0.01
+    P0[0, WS, WS] = 0.004**2
+    out = {}
+    for consider in (False, True):
+        cfg = FilterConfig(
+            wheel=FilterConfig().wheel.model_copy(update={"scale_consider": consider})
+        )
+        params = FilterParams.build(load_calibration(), cfg)
+        z = wheel_prediction(x0, omega, params) + 0.05  # small innovation (passes the gate)
+        left = right = z
+        out[consider] = update_wheel(
+            x0, P0, left, right, omega, params, cfg.wheel, HeadOutputs.neutral(1)
+        )
+    s_c, P_c, _ = out[True]
+    s_e, P_e, _ = out[False]
+    assert float(s_c.wheel_scale[0, 0]) == float(x0.wheel_scale[0, 0])  # consider: not updated
+    assert float(s_e.wheel_scale[0, 0]) != float(x0.wheel_scale[0, 0])  # estimated: updated
+    assert float(P_c[0, WS, WS]) == pytest.approx(0.004**2)  # its uncertainty is kept
+    assert float(P_e[0, WS, WS]) < 0.004**2  # estimated: uncertainty shrinks from data
+    # its uncertainty enters the innovation covariance: S grows with the consider sigma
+    _, _, d_c = out[True]
+    P_no = P0.clone()
+    P_no[0, WS, WS] = 0.0
+    cfg = FilterConfig(wheel=FilterConfig().wheel.model_copy(update={"scale_consider": True}))
+    params = FilterParams.build(load_calibration(), cfg)
+    z = wheel_prediction(x0, omega, params) + 0.05
+    _, _, d_no = update_wheel(x0, P_no, z, z, omega, params, cfg.wheel, HeadOutputs.neutral(1))
+    assert float(d_c.S[0, 0, 0]) > float(d_no.S[0, 0, 0])
+    # Joseph form stays symmetric positive definite
+    assert torch.linalg.eigvalsh(P_c[0]).min() > 0

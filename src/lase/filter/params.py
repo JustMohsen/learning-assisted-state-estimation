@@ -53,6 +53,9 @@ class WheelUpdateConfig(Config):
     scale_trend_ref_date: dt.date = dt.date(2012, 1, 1)
     scale_trend_intercept: float = 1.054
     scale_trend_per_year: float = 0.0
+    # Schmidt "consider" state: the scale stays at its fixed value, but its uncertainty
+    # (prior.wheel_scale) is carried in the covariance (honest dead reckoning; user decision)
+    scale_consider: bool = False
     gate_prob: float = 0.999
     encoder_pitch_coef_m: float = 0.0  # R_w: reported speed includes R_w * body pitch rate
 
@@ -189,6 +192,7 @@ class FilterParams:
     gps_gm_tau_s: float = 55.0  # GPS-error correlation time
     gps_gm_var: float = 0.0  # GPS-error stationary variance (0 = state disabled)
     grade_rw_per_sqrt_m: float = 0.0  # terrain-gradient random walk (0 = state disabled)
+    consider_mask: Tensor | None = None  # (N_ERR,) 1 = consider state (never updated)
 
     @classmethod
     def build(cls, cal: NcltCalibration, cfg: FilterConfig) -> FilterParams:
@@ -215,4 +219,15 @@ class FilterParams:
             grade_rw_per_sqrt_m=cfg.nonholonomic.grade_rw_per_sqrt_m
             if cfg.nonholonomic.vertical_mode == "grade"
             else 0.0,
+            consider_mask=_consider_mask(cfg),
         )
+
+
+def _consider_mask(cfg: FilterConfig) -> Tensor | None:
+    from lase.filter.state import N_ERR, WS
+
+    if not cfg.wheel.scale_consider:
+        return None
+    m = torch.zeros(N_ERR, dtype=torch.float64)
+    m[WS] = 1.0
+    return m
