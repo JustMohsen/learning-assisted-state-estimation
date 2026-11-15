@@ -65,8 +65,9 @@ Rules every contributor, human or agent, follows so independently built parts fi
 | `b_acc` | `(B, 3)` | m/s² | Accelerometer bias, IMU axes |
 | `b_gyr` | `(B, 3)` | rad/s | Gyroscope bias, IMU axes |
 | `b_fog` | `(B, 1)` | rad/s | FOG rate bias, FOG axis |
+| `wheel_scale` | `(B, 1)` | - | Released wheel speed / true speed (Phase 1 estimate 1.054) |
 
-### 5.2 Error state (16 core coordinates, fixed order)
+### 5.2 Error state (fixed order: 16 core coordinates + wheel scale)
 
 | Indices | Symbol | Meaning |
 |---|---|---|
@@ -77,7 +78,9 @@ Rules every contributor, human or agent, follows so independently built parts fi
 | 12–14 | `db_gyr` | Gyroscope-bias error |
 | 15 | `db_fog` | FOG-bias error |
 
-The covariance `P` is `(B, 16, 16)` in this order. Later augmentations (e.g. calibration states) are appended after index 15 and declared here when added. Index constants live in one module (`lase.filter.state`), so code never hard-codes numbers like `9:12`.
+| 16 | `d_wheel_scale` | Wheel speed scale error (Phase 3; fixed when its prior and random walk are zero) |
+
+The covariance `P` is `(B, 17, 17)` in this order. Further augmentations are appended after index 16 and declared here when added. Index constants live in one module (`lase.filter.state`), so code never hard-codes numbers like `9:12`.
 
 ## 6. Interfaces
 

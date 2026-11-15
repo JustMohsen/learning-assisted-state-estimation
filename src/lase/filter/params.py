@@ -23,6 +23,7 @@ class ProcessNoise(Config):
     acc_bias_rw: float = 1e-4  # m/s^2/sqrt(s)
     gyr_bias_rw: float = 1e-5  # rad/s/sqrt(s)
     fog_bias_rw: float = 1e-7  # rad/s/sqrt(s)
+    wheel_scale_rw: float = 0.0  # 1/sqrt(s); 0 with a zero prior keeps the wheel scale fixed
 
 
 class InitialPrior(Config):
@@ -34,6 +35,7 @@ class InitialPrior(Config):
     acc_bias_mps2: float = 0.1
     gyr_bias_radps: float = 0.01
     fog_bias_radps: float = 1e-4
+    wheel_scale: float = 0.0  # 0: fixed at the calibration value; > 0: estimated as a state
 
 
 class WheelUpdateConfig(Config):
@@ -54,6 +56,7 @@ class GnssUpdateConfig(Config):
     skip_held: bool = True
     recovery_after_s: float = 30.0  # inflate position covariance after this long of rejections
     recovery_pos_sigma_m: float = 30.0
+    min_interval_s: float = 0.0  # skip fixes closer than this to the previous GPS update
 
 
 class FilterConfig(Config):

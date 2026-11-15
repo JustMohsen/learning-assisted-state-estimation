@@ -25,6 +25,8 @@ History:
   - tuning by grid search on training days only;
   - validation days for scoring only;
   - test days untouched.
+- **Wheel scale as error-state index 16 (CONVENTIONS updated, N_ERR = 17):** h = s * v_fwd; with zero prior and zero random walk it is exactly fixed (default; calibration value 1.054), with a prior it is estimated. This keeps the user's decision open and lets both be measured.
+- **Minimum GPS update interval (gnss.min_interval_s, default 0):** one lever against time-correlated GPS error, tuned in step 9 together with the GPS sigma.
 
 ## Steps
 
@@ -34,7 +36,7 @@ History:
 - [x] 4. Wheel and GPS updates + tests (Jacobians vs autograd; linear case vs WLS)
 - [x] 5. Runner (initialisation, exact-time event loop, NavEstimate output, diagnostics) + compute check
 - [x] 6. Simulation validation as tests (Monte Carlo covariance, clean accuracy, matched-noise NEES/NIS) + realistic-scenario run
-- [ ] 7. Optional wheel-scale state (17th error coordinate) and minimum GPS update interval + tests
+- [x] 7. Optional wheel-scale state (17th error coordinate) and minimum GPS update interval + tests
 - [ ] 8. Real-data tooling: `scripts/run_baseline.py` (parallel sessions, injected/natural outages, GPS off), oracle residuals, NIS on real data
 - [ ] 9. Tuning on training days (grid search, parallel)
 - [ ] 10. Validation-day evaluation vs baselines; Phase 3 report, summary, review notes
@@ -47,6 +49,7 @@ History:
 
 - 2026-11-15 ~02:05–02:45: steps 1–5 completed (see branch `phase3-prototype` history for details). Prototype simulation results: clean 2 cm / 0.1°; matched-noise NEES 2.4, NIS 1.0 / 2.0; nominal NEES 133 (correlated GPS); slip corrupts gyro-z bias; ~0.95 ms per IMU step.
 - 2026-11-15 02:55: Step 6 done: Monte Carlo covariance unit test (400 runs, variance ratios within 0.72-1.3; 2 s), validation tests for clean accuracy and matched-noise consistency (pass). Untuned baseline on the fitted 'realistic' scenario: median 2.9 m, p95 6.2 m, max 31.6 m (GPS episodes partly accepted), GPS NIS 8.4, NEES 126; gyro x/y biases recovered (8e-5 vs 3e-3 rad/s true RMS).
+- 2026-11-15 02:57: Step 7 done: wheel-scale state + minimum GPS update interval; test: with a prior the state converges from 1.054 to the true 1.08 (+-0.003) on the clean circle; with zero prior it stays fixed. 80 unit tests pass.
 
 ## Summary
 

@@ -24,7 +24,7 @@ from lase.filter.so3 import (
     so3_exp,
     so3_right_jacobian,
 )
-from lase.filter.state import BA, BF, BG, N_ERR, P_, TH, V_, NavState
+from lase.filter.state import BA, BF, BG, N_ERR, P_, TH, V_, WS, NavState
 
 
 @dataclass(frozen=True)
@@ -90,6 +90,7 @@ def propagate(
         b_acc=state.b_acc + drift[:, 0:3] * dt_,
         b_gyr=state.b_gyr + drift[:, 3:6] * dt_,
         b_fog=state.b_fog,
+        wheel_scale=state.wheel_scale,
     )
 
     # --- error-state transition F (first order) ---
@@ -128,6 +129,7 @@ def propagate(
     Q[:, BA, BA] = eye3 * (noise.acc_bias_rw**2 * dt3)
     Q[:, BG, BG] = eye3 * (noise.gyr_bias_rw**2 * dt3)
     Q[:, BF, BF] = (noise.fog_bias_rw**2 * dt)[:, None, None]
+    Q[:, WS, WS] = (noise.wheel_scale_rw**2 * dt)[:, None, None]
 
     P_new = F @ P @ F.transpose(-1, -2) + Q
     P_new = 0.5 * (P_new + P_new.transpose(-1, -2))
@@ -136,7 +138,7 @@ def propagate(
 
 
 def boxminus(a: NavState, b: NavState) -> Tensor:
-    """Error-state difference ``a ⊟ b`` (B, 16): additive except attitude Log(C_b^T C_a)."""
+    """Error-state difference ``a ⊟ b`` (B, 17): additive except attitude Log(C_b^T C_a)."""
     from lase.filter.so3 import so3_log
 
     dth = so3_log(b.C_wb.transpose(-1, -2) @ a.C_wb)
@@ -148,6 +150,7 @@ def boxminus(a: NavState, b: NavState) -> Tensor:
             a.b_acc - b.b_acc,
             a.b_gyr - b.b_gyr,
             a.b_fog - b.b_fog,
+            a.wheel_scale - b.wheel_scale,
         ],
         dim=-1,
     )

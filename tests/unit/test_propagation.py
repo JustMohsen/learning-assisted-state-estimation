@@ -26,6 +26,7 @@ def _state(seed: int = 0) -> NavState:
         b_acc=0.05 * torch.randn(1, 3, generator=g, dtype=D),
         b_gyr=0.01 * torch.randn(1, 3, generator=g, dtype=D),
         b_fog=1e-4 * torch.randn(1, 1, generator=g, dtype=D),
+        wheel_scale=torch.ones(1, 1, dtype=D),
     )
 
 
@@ -67,6 +68,7 @@ def test_mean_matches_strapdown_without_fog() -> None:
         torch.zeros(1, 3, dtype=D),
         torch.zeros(1, 3, dtype=D),
         torch.zeros(1, 1, dtype=D),
+        torch.ones(1, 1, dtype=D),
     )
     P = torch.eye(N_ERR, dtype=D)[None]
     cfg = FilterConfig()

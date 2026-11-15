@@ -16,7 +16,8 @@ TH = slice(6, 9)
 BA = slice(9, 12)
 BG = slice(12, 15)
 BF = slice(15, 16)
-N_ERR = 16
+WS = slice(16, 17)  # wheel speed scale (fixed when its prior and random walk are zero)
+N_ERR = 17
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,7 @@ class NavState:
     b_acc: Tensor  # (B, 3) IMU axes
     b_gyr: Tensor  # (B, 3) IMU axes
     b_fog: Tensor  # (B, 1) FOG axis
+    wheel_scale: Tensor  # (B, 1) released wheel speed / true speed
 
     @property
     def C_wb(self) -> Tensor:
@@ -44,6 +46,7 @@ class NavState:
             b_acc=self.b_acc + dx[:, BA],
             b_gyr=self.b_gyr + dx[:, BG],
             b_fog=self.b_fog + dx[:, BF],
+            wheel_scale=self.wheel_scale + dx[:, WS],
         )
 
 

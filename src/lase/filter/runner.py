@@ -108,6 +108,7 @@ def initial_state(
         b_acc=torch.zeros(1, 3, dtype=D),
         b_gyr=torch.zeros(1, 3, dtype=D),
         b_fog=torch.zeros(1, 1, dtype=D),
+        wheel_scale=torch.full((1, 1), params.wheel_scale, dtype=D),
     )
     pr = cfg.prior
     sig = np.r_[
@@ -117,6 +118,7 @@ def initial_state(
         [pr.acc_bias_mps2] * 3,
         [pr.gyr_bias_radps] * 3,
         [pr.fog_bias_radps],
+        [pr.wheel_scale],
     ]
     return state, torch.diag(torch.as_tensor(sig, dtype=D) ** 2)[None]
 
@@ -181,6 +183,7 @@ def run_filter(
     out_p, out_v = np.zeros((n_max, 2)), np.zeros((n_max, 2))
     out_h, out_cov = np.zeros(n_max), np.zeros((n_max, 5, 5))
     out_ba, out_bg, out_bf = np.zeros((n_max, 3)), np.zeros((n_max, 3)), np.zeros(n_max)
+    out_ws = np.zeros(n_max)
     n_out = 0
     wheel_log, gnss_log = UpdateLog(), UpdateLog()
     last_imu: tuple[int, Tensor, Tensor] | None = None
@@ -189,6 +192,7 @@ def run_filter(
         None  # FOG angle used at the previous boundary (keeps increments telescoping)
     )
     last_gnss_accept = ic.t_us
+    last_gnss_queued = -(10**18)
     gnss_rejects = 0
     recoveries = 0
     n_steps = 0
@@ -247,8 +251,13 @@ def run_filter(
                 pending.append((t, int(s), row))
             continue
         if s == SensorId.GNSS:
-            if cfg.gnss.enabled and not (cfg.gnss.skip_held and (gps.flags[row] & held_bit)):
+            if (
+                cfg.gnss.enabled
+                and not (cfg.gnss.skip_held and (gps.flags[row] & held_bit))
+                and (t - last_gnss_queued) >= cfg.gnss.min_interval_s * 1e6
+            ):
                 pending.append((t, int(s), row))
+                last_gnss_queued = t
             continue
         # IMU sample: process the interval since the previous sample, split at pending updates
         acc = torch.as_tensor(imu.acc[row], dtype=D)[None]
@@ -323,6 +332,7 @@ def run_filter(
             out_ba[n_out] = state.b_acc[0].numpy()
             out_bg[n_out] = state.b_gyr[0].numpy()
             out_bf[n_out] = float(state.b_fog[0, 0])
+            out_ws[n_out] = float(state.wheel_scale[0, 0])
             n_out += 1
 
     est = NavEstimate(
@@ -338,6 +348,7 @@ def run_filter(
         "acc": out_ba[:n_out],
         "gyr": out_bg[:n_out],
         "fog": out_bf[:n_out],
+        "wheel_scale": out_ws[:n_out],
     }
     _ = (BA, BG, BF, PropagationDiagnostics)
     return RunResult(

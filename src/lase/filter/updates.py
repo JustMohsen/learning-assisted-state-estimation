@@ -16,7 +16,7 @@ from torch import Tensor
 from lase.filter.learned import HeadOutputs
 from lase.filter.params import FilterParams, GnssUpdateConfig, WheelUpdateConfig
 from lase.filter.so3 import skew
-from lase.filter.state import N_ERR, P_, TH, V_, NavState
+from lase.filter.state import N_ERR, P_, TH, V_, WS, NavState
 
 
 @dataclass(frozen=True)
@@ -98,15 +98,17 @@ def update_wheel(
     ``omega_b`` (latest corrected body rate) is treated as an exogenous input; its shared
     gyro noise with propagation is a disclosed approximation.
     """
-    s = params.wheel_scale
+    s = state.wheel_scale[:, 0]
     z = 0.5 * (left + right)
-    h = s * wheel_prediction(state, omega_b, params) + learned.wheel_residual[:, 0]
+    v_fwd = wheel_prediction(state, omega_b, params)
+    h = s * v_fwd + learned.wheel_residual[:, 0]
     C = state.C_wb
     v_b = (C.transpose(-1, -2) @ state.v_w[..., None])[..., 0]
     B = P.shape[0]
     H = torch.zeros(B, 1, N_ERR, dtype=P.dtype)
-    H[:, 0, V_] = s * C[:, :, 0]  # e_x^T C^T
-    H[:, 0, TH] = s * skew(v_b)[:, 0, :]  # e_x^T [C^T v]x
+    H[:, 0, V_] = s[:, None] * C[:, :, 0]  # e_x^T C^T
+    H[:, 0, TH] = s[:, None] * skew(v_b)[:, 0, :]  # e_x^T [C^T v]x
+    H[:, 0, WS] = v_fwd
     R = (cfg.sigma_mps**2 * learned.wheel_var_mult[:, 0])[:, None, None]
     return kalman_update(state, P, (z - h)[:, None], H, R, gate_threshold(cfg.gate_prob, 1), apply)
 

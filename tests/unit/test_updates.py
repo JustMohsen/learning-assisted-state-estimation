@@ -27,6 +27,7 @@ def _state() -> NavState:
         b_acc=torch.zeros(1, 3, dtype=D),
         b_gyr=torch.zeros(1, 3, dtype=D),
         b_fog=torch.zeros(1, 1, dtype=D),
+        wheel_scale=torch.full((1, 1), 1.05, dtype=D),
     )
 
 

@@ -22,8 +22,7 @@ from lase.sim.trajectory import truth_from_reference
 from tests.unit.test_sim_sensors import T0, _circle_reference, _zero_imu
 
 
-@pytest.fixture(scope="module")
-def clean_circle():  # type: ignore[no-untyped-def]
+def _clean_streams(wheel_scale: float = 1.0):  # type: ignore[no-untyped-def]
     cal = load_calibration()
     traj = truth_from_reference(_circle_reference(120.0))
     rng = np.random.default_rng(0)
@@ -40,7 +39,7 @@ def clean_circle():  # type: ignore[no-untyped-def]
     fog = simulate_fog(
         traj, t_fog, FogErrors(angle_noise_rad=0, bias_init_radps=0, bias_rw_radps_sqrts=0), rng
     )
-    wh = simulate_wheels(traj, t_wh, WheelErrors(speed_scale=1.0, noise_mps=0), rng)
+    wh = simulate_wheels(traj, t_wh, WheelErrors(speed_scale=wheel_scale, noise_mps=0), rng)
     gps = simulate_gps(
         traj, t_gps, cal, GpsErrors(white_sigma_m=0, gm_sigma_m=0, mode2_frac=0), rng
     )
@@ -58,6 +57,11 @@ def clean_circle():  # type: ignore[no-untyped-def]
         gnss_ned=LocalProjection.from_config(cal.local_frame).to_local(gps.lat, gps.lon, gps.alt),
     )
     return streams, _reference_from_truth(traj), cal
+
+
+@pytest.fixture(scope="module")
+def clean_circle():  # type: ignore[no-untyped-def]
+    return _clean_streams(1.0)
 
 
 @pytest.mark.parametrize("use_fog", [True, False])
@@ -80,3 +84,15 @@ def test_clean_circle_tracks_truth(clean_circle, use_fog: bool) -> None:  # type
     assert s["vel_rmse_mps"] < 0.02
     assert res.wheel["accepted"].all()
     assert res.gnss["accepted"].all()
+
+
+def test_wheel_scale_state_converges() -> None:
+    streams, ref, cal = _clean_streams(1.08)
+    base = FilterConfig()
+    cfg = base.model_copy(update={"prior": base.prior.model_copy(update={"wheel_scale": 0.05})})
+    params = replace(FilterParams.build(cal, cfg), wheel_scale=1.054)  # Phase 1 estimate as start
+    ic = initial_condition_from_reference(ref, T0 + 20_000_000)
+    res = run_filter(streams, ic, cfg, params, t_end_us=T0 + 95_000_000)
+    assert res.biases["wheel_scale"][-1] == pytest.approx(1.08, abs=0.003)
+    fixed = run_filter(streams, ic, base, params, t_end_us=T0 + 95_000_000)
+    assert np.allclose(fixed.biases["wheel_scale"], 1.054)  # zero prior: stays fixed
