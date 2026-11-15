@@ -84,7 +84,9 @@ class FilterConfig(Config):
     nonholonomic: NonholonomicConfig = NonholonomicConfig()
     gnss: GnssUpdateConfig = GnssUpdateConfig()
     use_fog: bool = True
-    earth_rotation: bool = True  # compensate the Earth rate sensed by gyro and FOG
+    # Off: on training days compensating made heading worse (released FOG data appears to be
+    # Earth-rate compensated already); kept as an option.
+    earth_rotation: bool = False
     output_every: int = 1  # emit an estimate every n-th propagation step
 
 
