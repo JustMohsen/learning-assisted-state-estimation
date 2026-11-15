@@ -118,8 +118,17 @@ def run_chain(
     mode: Mode = "gps",
     max_minutes: float | None = None,
     params: Parameters | None = None,
+    out_csv: str | None = None,
+    tag: str = "",
 ) -> list[dict[str, Any]]:
-    """Run sessions in date order, carrying the wheel-scale estimate (``cfg.wheel_scale_chain``)."""
+    """Run sessions in date order, carrying the wheel-scale estimate (``cfg.wheel_scale_chain``).
+
+    If ``out_csv`` is given, each session's row is appended as soon as it finishes, so a
+    crash never loses completed sessions.
+    """
+    import pandas as pd
+
+    params = params or load_parameters()  # snapshot once; never re-read during the chain
     ch = cfg.wheel_scale_chain
     value, sigma, prev = ch.first_value, ch.first_sigma, None
     rows = []
@@ -137,7 +146,12 @@ def run_chain(
         )
         row = run_session(d, c, mode, max_minutes, params=params)
         row["init_wheel_scale"], row["init_wheel_scale_sigma"] = value, sigma
+        row["variant"] = tag
         rows.append(row)
+        if out_csv is not None:
+            pd.DataFrame([row]).to_csv(
+                out_csv, mode="a", header=not os.path.exists(out_csv), index=False
+            )
         value, sigma, prev = row["final_wheel_scale"], row["final_wheel_scale_sigma"], d
     return rows
 
@@ -159,11 +173,24 @@ def _worker(args: tuple[Any, ...]) -> Any:
 def run_many(
     jobs: Sequence[tuple[Any, ...]],
     workers: int | None = None,
+    params: Parameters | None = None,
 ) -> list[Any]:
-    """Run jobs in parallel processes (one thread each); results in job order."""
+    """Run ``run_session`` jobs in parallel processes (one thread each); results in job order.
+
+    ``configs/parameters.yaml`` is loaded **once here** (or ``params`` is used) and passed to
+    every job, so editing the file while jobs run cannot change or break them.
+    """
+    snapshot = params or load_parameters()
+    full = []
+    for job in jobs:
+        j = list(job) + [None] * (6 - len(job))  # date, cfg, mode, max_minutes, offset, details
+        j[3] = j[3] if len(job) > 3 else None
+        j[4] = j[4] if len(job) > 4 and j[4] is not None else 0.0
+        j[5] = bool(j[5]) if len(job) > 5 else False
+        full.append((*j[:6], snapshot))
     n = workers or max(1, (os.cpu_count() or 2) - 2)
     with ProcessPoolExecutor(max_workers=n) as ex:
-        return list(ex.map(_worker, jobs))
+        return list(ex.map(_worker, full))
 
 
 __all__ = ["replace", "run_many", "run_session"]

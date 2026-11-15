@@ -100,6 +100,7 @@ History:
 - 2026-11-15 16:01: Bug found and fixed: after R1 made the non-holonomic constraint 1-D, the experiment summary still reshaped its innovations as 2-D, which crashed the first R6 run (no results). The summary now infers the measurement dimension; validation smoke test added for both constraint variants. The stale pre-revision all-training-days diagnostic was stopped (superseded; rerun in R7 with the new code). 2x2 wheel-model comparison (encoder term x vertical constraint) added.
 - 2026-11-15 16:18: Clarified for the user: the filter removes the full 3-D Earth-rate vector (15.04 deg/h; NED [11.1, 0, -10.1] deg/h at 42.3 N) from all gyro axes and the FOG via C_wb^T w_ie; 10.1 deg/h (vertical) is the part that drives heading, while the horizontal part would tilt roll/pitch, which gravity keeps correcting.
 - 2026-11-15 16:34: 2x2 wheel-model test done (24 runs, 32 min, Earth-rate compensation off at launch; within-test comparison unaffected).
+- 2026-11-15 16:40: R6 crashed a second time (~1 h lost): long-running workers re-read configs/parameters.yaml at each session and rejected the new vertical_mode key their already-loaded code did not know. Fixed: run_many/run_chain load the parameters once at submission and pass the snapshot to every job (the YAML is never re-read during a run, which also protects jobs from edits by the parallel Phase 4 conversation); chains append each finished session to a partial CSV.
 
 ## Summary
 

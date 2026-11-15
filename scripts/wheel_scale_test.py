@@ -17,6 +17,7 @@ import pandas as pd
 from lase.data.splits import Split, load_split
 from lase.filter.experiment import _chain_worker, run_many
 from lase.filter.params import load_filter_config
+from lase.parameters import load_parameters
 from lase.utils.paths import repo_root
 
 
@@ -40,22 +41,28 @@ def main() -> int:
         ),
     }
     t0 = time.time()
+    out = repo_root() / "reports" / "phase3_baseline" / "wheel_scale_test.csv"
+    partial = out.with_suffix(".partial.csv")
+    partial.unlink(missing_ok=True)
+    params = load_parameters()  # snapshot: the YAML is not re-read while jobs run
     rows = []
-    with ProcessPoolExecutor(len(variants) + 1) as ex:
+    with ProcessPoolExecutor(len(variants)) as ex:
         futs = {
-            name: ex.submit(_chain_worker, (dates, cfg, "outages", minutes))
+            name: ex.submit(
+                _chain_worker, (dates, cfg, "outages", minutes, params, str(partial), name)
+            )
             for name, cfg in variants.items()
         }
-        fixed = run_many([(d, base, "outages", minutes, 0.0) for d in dates], workers=6)
+        fixed = run_many([(d, base, "outages", minutes) for d in dates], workers=4, params=params)
         for r in fixed:
             rows.append({"variant": "fixed_1.054", **r})
-        for name, f in futs.items():
-            for r in f.result():
-                rows.append({"variant": name, **r})
+        pd.DataFrame(rows).to_csv(partial, mode="a", header=not partial.exists(), index=False)
+        for f in futs.values():
+            rows.extend(f.result())
     df = pd.DataFrame(rows)
-    out = repo_root() / "reports" / "phase3_baseline" / "wheel_scale_test.csv"
-    df.to_csv(out, index=False, float_format="%.5g")
-    # compare to the reference-measured per-session scale (Phase 1, V3)
+    df.to_csv(
+        out, index=False, float_format="%.5g"
+    )  # compare to the reference-measured per-session scale (Phase 1, V3)
     v3 = pd.read_csv(repo_root() / "reports" / "phase1_audit" / "validation.csv")[
         ["date", "v3_scale"]
     ]
