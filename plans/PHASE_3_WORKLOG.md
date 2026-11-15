@@ -33,7 +33,7 @@ History:
 - [x] 3. Propagation (mean + covariance) + tests (vs strapdown; Jacobians vs autograd)
 - [x] 4. Wheel and GPS updates + tests (Jacobians vs autograd; linear case vs WLS)
 - [x] 5. Runner (initialisation, exact-time event loop, NavEstimate output, diagnostics) + compute check
-- [ ] 6. Simulation validation as tests (Monte Carlo covariance, clean accuracy, matched-noise NEES/NIS) + realistic-scenario run
+- [x] 6. Simulation validation as tests (Monte Carlo covariance, clean accuracy, matched-noise NEES/NIS) + realistic-scenario run
 - [ ] 7. Optional wheel-scale state (17th error coordinate) and minimum GPS update interval + tests
 - [ ] 8. Real-data tooling: `scripts/run_baseline.py` (parallel sessions, injected/natural outages, GPS off), oracle residuals, NIS on real data
 - [ ] 9. Tuning on training days (grid search, parallel)
@@ -46,6 +46,7 @@ History:
 ## Log
 
 - 2026-11-15 ~02:05–02:45: steps 1–5 completed (see branch `phase3-prototype` history for details). Prototype simulation results: clean 2 cm / 0.1°; matched-noise NEES 2.4, NIS 1.0 / 2.0; nominal NEES 133 (correlated GPS); slip corrupts gyro-z bias; ~0.95 ms per IMU step.
+- 2026-11-15 02:55: Step 6 done: Monte Carlo covariance unit test (400 runs, variance ratios within 0.72-1.3; 2 s), validation tests for clean accuracy and matched-noise consistency (pass). Untuned baseline on the fitted 'realistic' scenario: median 2.9 m, p95 6.2 m, max 31.6 m (GPS episodes partly accepted), GPS NIS 8.4, NEES 126; gyro x/y biases recovered (8e-5 vs 3e-3 rad/s true RMS).
 
 ## Summary
 
