@@ -29,9 +29,12 @@ Execution log for [PHASE_2_SIM_EVAL.md](./PHASE_2_SIM_EVAL.md). Run rules: [AUTO
 - [x] 6. Outage injection, outage error-growth curves, relative pose error
 - [x] 7. Consistency statistics (NEES/NIS, coverage), plots
 - [x] 8. Baselines (raw GPS, NCLT odometry) + `evo` cross-check (E1–E2)
-- [ ] 9. Phase 2 report + summary; update README status
+- [x] 9. Phase 2 report + summary; update README status
 
 ## Questions for the user
+
+- **Simulator error magnitudes** are plausible defaults, not identified from data. If you want sim scenarios tied to measured values, Phase 3's oracle-residual analysis can supply them (e.g. GPS error statistics, IMU noise at rest); I'd update configs/sim then.
+- **Reporting with outliers:** I report median/p95 alongside RMSE because raw-GPS RMSE is dominated by km-scale outliers. Do you want a headline metric fixed now (e.g. RMSE at graph nodes as in the scope, plus median), or keep reporting all?
 
 ## Log
 
@@ -46,7 +49,33 @@ Execution log for [PHASE_2_SIM_EVAL.md](./PHASE_2_SIM_EVAL.md). Run rules: [AUTO
 - 2026-11-15 02:03: Step 7 done: evaluation/consistency.py (NEES/NIS, chi-square summaries) and evaluation/plots.py (trajectories, error vs time with outage shading, outage growth).
 - 2026-11-15 02:03: Step 8 done: baselines.py + scripts/evaluate_baselines.py -> reports/phase2_eval/. E1: position RMSE equals evo APE exactly. E2: reference scores itself at 6 mm (nodes, causal association) / 0 (dense). Pooled (test days): raw GPS median 4.0 m but RMSE 336 m (outliers); NCLT odometry RMSE 75 m, heading 15 deg. Outages (232): GPS hold median 15/62/109 m at 10/60/120 s; oracle-anchored odometry 0.22/1.0/2.0 m. 7 unit + 2 validation tests.
 - 2026-11-15 02:03: Finding: consumer GPS has extreme outliers flagged as valid fixes: 1.4% of samples > 100 m and 0.4% > 1 km (up to 5.9 km), in 15 of 27 sessions. Robust GPS gating is mandatory in Phase 3.
+- 2026-11-15 02:03: Step 9 done: reports/phase2_eval/README.md; README status updated; Phase 2 summary written.
 
 ## Summary
 
-(written when Phase 2 completes)
+**Phase 2 is complete** (15 November 2026, overnight). All 9 steps are done.
+
+**Built:**
+- `lase.sim`: truth trajectory, sensor models, scenarios, `simulate_session`, a validation-only strapdown integrator and checks S1–S3.
+- `lase.evaluation`: estimate format, causal association, metrics and RPE, outage planning and curves, NEES/NIS, plots, baselines.
+- Scripts: `scripts/evaluate_baselines.py`.
+
+**Tests:** 60 unit tests (CI) and 22 validation tests (Phase 1 + Phase 2), all passing.
+
+**Key results** ([reports/phase2_eval/README.md](../reports/phase2_eval/README.md)):
+- The simulator validates: second-order strapdown convergence, injected values recovered by the Phase 1 checks, and correct noise statistics.
+- The harness matches `evo` exactly.
+- Baseline reference points:
+  - raw GPS: median 3.7–4.5 m, but RMSE in the hundreds of metres because of extreme outliers;
+  - NCLT odometry: 54–111 m RMSE without GPS;
+  - oracle-anchored wheels + FOG during injected outages: 1.0 m (60 s) and 2.0 m (120 s) median.
+
+**Most consequential decisions:**
+- the simulator emits real-data types;
+- simulated sensors use real timestamps;
+- error magnitudes are plausible defaults, not identified values;
+- association is causal with 200 ms staleness;
+- outage windows are placed only where GPS was healthy;
+- oracle-anchored odometry is labelled diagnostic-only.
+
+**Needs the user:** see *Questions for the user* (none blocking).
