@@ -82,7 +82,7 @@ The baseline runs at ~2 ms per IMU step forward, roughly 6–8 ms with the backw
 3. **Batched masked runner:** B chunks step through their schedules in parallel. At each step every chunk applies the operation it needs, and the others are masked. The Python loop cost is shared across the batch: target B = 32–128.
 4. **Warm starts and burn-in:** a chunk starts from baseline A's cached state and covariance at that time, then runs a **20 s burn-in** without gradient, so the state adapts to B's current constants. The **10 s loss window** follows with backpropagation. Chunks may continue chronologically, carrying state across windows with gradients detached (the scope's truncated backpropagation, now with many parallel streams).
 5. **Hardware:**
-   - The filter needs float64, which Apple's GPU backend (MPS) does not support, so it runs on the **CPU**.
+   - The filter needs float64, which Apple's GPU backend (MPS) does not support, so it runs on the **CPU**. (A float32 filter is a possible later experiment, not part of the core plan: see section 5.)
    - `torch.compile` is a measured option later.
    - **Cloud compute only after a local measurement and cost estimate**, and with the user's approval per run. Budget: **≤ $10 for the first training run, ≤ $30 for the pilot, ≤ $50 in total**.
    - Likely best value: a many-core CPU instance (FP64 + tiny sequential operations suit CPUs). GPUs pay off only with very large batches and data-centre FP64.
@@ -150,3 +150,30 @@ flowchart TD
 | Learned noise becomes "effective weights" rather than honest noise | Report consistency (NEES/NIS); innovation-likelihood term available (α > 0) |
 | Non-identifiable constants | Anchor penalty plus the identifiability report |
 | Warm-start mismatch (cached state from A, constants from B) | 20 s burn-in; check sensitivity to burn-in length |
+
+## 5. Optional experiment: float32 filter (not part of the core plan)
+
+*Noted at the user's request (15 November 2026). The core plan keeps the filter in float64.*
+
+**Why consider it:**
+- float32 opens GPUs: Apple MPS supports float32 only, and cloud or consumer GPUs run float32 30–60× faster than float64;
+- with the batched runner (many chunks in parallel), that could be the practical way to scale training.
+
+On the laptop CPU alone the gain is small (maybe 1.2–2×), because the cost is per-operation overhead on tiny matrices, not arithmetic.
+
+**What float32 risks** (~7 significant digits vs ~16):
+
+| Risk | Detail |
+|---|---|
+| Covariance range | P spans ~10¹³: position variance up to ~900 m², FOG-bias variance ~1e-10 (rad/s)². Small-variance states (biases) lose precision; variances can turn negative. |
+| Differences of large accumulators | The unwrapped FOG angle reaches hundreds of rad. A float32 difference at 300 rad resolves only ~3e-5 rad per increment, about 75× the FOG's own noise. |
+| Long gradient chains | Rounding accumulates through thousands of steps; gradient checks need float64 |
+| Not affected | Positions (~0.06 mm resolution at 1 km); timestamps (int64) |
+
+**Safeguards that would make it workable:**
+1. Data preparation in float64, then cast: FOG increments, interpolated IMU values, positions relative to a session origin.
+2. Rescaled state units so all variances are of order 1 (e.g. FOG bias in µrad/s), shrinking P's range to ~10³, as in embedded float32 Kalman filters.
+3. Keep the Joseph form and symmetrisation; add a small diagonal floor. A square-root covariance formulation is the robust fallback.
+4. float64 stays the reference: gradient checks and the verification path remain float64.
+
+**Gate before adopting it:** run baseline A in float32 and float64 on the same sessions and compare accuracy, covariance health (positive variances, condition number) and NEES. Adopt float32 only if it matches within noise. It would change the convention "filter float64, network float32" (CONVENTIONS.md), so it needs the user's approval.
