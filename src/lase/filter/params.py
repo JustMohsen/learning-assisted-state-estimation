@@ -19,7 +19,9 @@ class ProcessNoise(Config):
 
     acc_noise_density: float = 0.02  # m/s^2/sqrt(Hz) (white specific-force noise, incl. vibration)
     gyr_noise_density: float = 0.002  # rad/s/sqrt(Hz)
-    fog_angle_random_walk: float = 2e-4  # rad/sqrt(s), FOG body-z rate noise (white approx.)
+    fog_angle_random_walk: float = (
+        2e-5  # rad/sqrt(s); KVH DSP-3000 datasheet ARW 0.0667 deg/sqrt(h)
+    )
     acc_bias_rw: float = 1e-4  # m/s^2/sqrt(s)
     gyr_bias_rw: float = 1e-5  # rad/s/sqrt(s)
     fog_bias_rw: float = 1e-7  # rad/s/sqrt(s)
@@ -34,7 +36,7 @@ class InitialPrior(Config):
     att_rad: tuple[float, float, float] = (0.02, 0.02, 0.02)
     acc_bias_mps2: float = 0.1
     gyr_bias_radps: float = 0.01
-    fog_bias_radps: float = 1e-4
+    fog_bias_radps: float = 1e-5  # KVH DSP-3000 bias stability ~1 deg/h = 4.8e-6 rad/s
     wheel_scale: float = 0.0  # 0: fixed at the calibration value; > 0: estimated as a state
 
 
@@ -44,6 +46,19 @@ class WheelUpdateConfig(Config):
     enabled: bool = True
     sigma_mps: float = 0.1
     speed_scale: float | None = None  # None: use the calibration estimate
+    gate_prob: float = 0.999
+
+
+class NonholonomicConfig(Config):
+    """Soft non-holonomic pseudo-measurement: axle lateral/vertical body velocity ~ 0.
+
+    Scope stage 3 lists the (learned-trust) lateral no-slip constraint as an extension;
+    here it is an optional analytical baseline component (decision pending with the user).
+    """
+
+    enabled: bool = False
+    sigma_lateral_mps: float = 0.1
+    sigma_vertical_mps: float = 0.1
     gate_prob: float = 0.999
 
 
@@ -66,6 +81,7 @@ class FilterConfig(Config):
     noise: ProcessNoise = ProcessNoise()
     prior: InitialPrior = InitialPrior()
     wheel: WheelUpdateConfig = WheelUpdateConfig()
+    nonholonomic: NonholonomicConfig = NonholonomicConfig()
     gnss: GnssUpdateConfig = GnssUpdateConfig()
     use_fog: bool = True
     output_every: int = 1  # emit an estimate every n-th propagation step

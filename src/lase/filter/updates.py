@@ -14,7 +14,7 @@ from scipy.stats import chi2
 from torch import Tensor
 
 from lase.filter.learned import HeadOutputs
-from lase.filter.params import FilterParams, GnssUpdateConfig, WheelUpdateConfig
+from lase.filter.params import FilterParams, GnssUpdateConfig, NonholonomicConfig, WheelUpdateConfig
 from lase.filter.so3 import skew
 from lase.filter.state import N_ERR, P_, TH, V_, WS, NavState
 
@@ -111,6 +111,35 @@ def update_wheel(
     H[:, 0, WS] = v_fwd
     R = (cfg.sigma_mps**2 * learned.wheel_var_mult[:, 0])[:, None, None]
     return kalman_update(state, P, (z - h)[:, None], H, R, gate_threshold(cfg.gate_prob, 1), apply)
+
+
+def axle_velocity_body(state: NavState, omega_b: Tensor, params: FilterParams) -> Tensor:
+    """Body-frame velocity of the axle centre (B, 3)."""
+    C = state.C_wb
+    v_b = (C.transpose(-1, -2) @ state.v_w[..., None])[..., 0]
+    out: Tensor = v_b - torch.linalg.cross(omega_b, params.l_imu.expand_as(omega_b))
+    return out
+
+
+def update_nonholonomic(
+    state: NavState,
+    P: Tensor,
+    omega_b: Tensor,
+    params: FilterParams,
+    cfg: NonholonomicConfig,
+) -> tuple[NavState, Tensor, UpdateDiagnostics]:
+    """Pseudo-measurement: axle lateral and vertical body velocity are zero (2-dof, soft)."""
+    C = state.C_wb
+    v_b = (C.transpose(-1, -2) @ state.v_w[..., None])[..., 0]
+    h = axle_velocity_body(state, omega_b, params)[:, 1:3]
+    B = P.shape[0]
+    H = torch.zeros(B, 2, N_ERR, dtype=P.dtype)
+    H[:, :, V_] = C.transpose(-1, -2)[:, 1:3, :]  # rows y, z of C^T
+    H[:, :, TH] = skew(v_b)[:, 1:3, :]
+    R = torch.diag(
+        torch.tensor([cfg.sigma_lateral_mps**2, cfg.sigma_vertical_mps**2], dtype=P.dtype)
+    ).expand(B, 2, 2)
+    return kalman_update(state, P, -h, H, R, gate_threshold(cfg.gate_prob, 2))
 
 
 def gnss_prediction(state: NavState, params: FilterParams) -> Tensor:

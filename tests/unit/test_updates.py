@@ -112,3 +112,26 @@ def test_wheel_update_reduces_speed_error() -> None:
     assert bool(diag.accepted[0])
     new_pred = params.wheel_scale * wheel_prediction(s, omega, params)
     assert abs(float(meas - new_pred)) < 0.2
+
+
+def test_nonholonomic_jacobian_matches_autograd() -> None:
+    from lase.filter.params import NonholonomicConfig
+    from lase.filter.so3 import skew
+    from lase.filter.updates import axle_velocity_body, update_nonholonomic
+
+    params = FilterParams.build(load_calibration(), FilterConfig())
+    x0 = _state()
+    omega = torch.tensor([[0.05, -0.02, 0.3]], dtype=D)
+    J = _H_numeric(lambda x: axle_velocity_body(x, omega, params)[:, 1:3], x0)
+    C = x0.C_wb[0]
+    v_b = C.T @ x0.v_w[0]
+    H = torch.zeros(2, N_ERR, dtype=D)
+    H[:, 3:6] = C.T[1:3]
+    H[:, 6:9] = skew(v_b[None])[0, 1:3]
+    np.testing.assert_allclose(H.numpy(), J.numpy(), atol=1e-10)
+    P = torch.eye(N_ERR, dtype=D)[None]
+    s, _, d = update_nonholonomic(x0, P, omega, params, NonholonomicConfig(enabled=True))
+    assert bool(d.accepted[0])
+    after = axle_velocity_body(s, omega, params)[0, 1:3].abs().sum()
+    before = axle_velocity_body(x0, omega, params)[0, 1:3].abs().sum()
+    assert after < before

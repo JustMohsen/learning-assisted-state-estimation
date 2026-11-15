@@ -30,7 +30,7 @@ from lase.filter.params import FilterConfig, FilterParams
 from lase.filter.propagation import ImuInterval, PropagationDiagnostics, propagate
 from lase.filter.so3 import matrix_to_quat, skew, yaw_of
 from lase.filter.state import BA, BF, BG, N_ERR, P_, TH, V_, NavState
-from lase.filter.updates import update_gnss, update_wheel
+from lase.filter.updates import update_gnss, update_nonholonomic, update_wheel
 from lase.geometry.euler import euler_zyx_to_matrix
 
 D = torch.float64
@@ -80,6 +80,7 @@ class RunResult:
     estimate: NavEstimate
     wheel: dict[str, np.ndarray]
     gnss: dict[str, np.ndarray]
+    nonholonomic: dict[str, np.ndarray]
     biases: dict[str, np.ndarray]  # t_us, acc (N,3), gyr (N,3), fog (N,) at output times
     final_state: NavState
     final_P: Tensor
@@ -155,9 +156,13 @@ class _FogHistory:
             return float(self.a[j] + w * (self.a[j + 1] - self.a[j]))
         if t_query - self.t[j] > max_extrapolate_us:
             return None
-        t0, t1 = self.t[j - 1], self.t[j]  # extrapolate from the last two samples
-        rate = (self.a[j] - self.a[j - 1]) / (t1 - t0)
-        return float(self.a[j] + rate * (t_query - t1))
+        # Extrapolate with a rate over a >= 20 ms baseline: FOG samples can arrive ~0.1 ms
+        # apart, and a two-sample rate over such a gap is wildly wrong (one-sample spikes).
+        i0 = max(int(np.searchsorted(self.t[:n_avail], self.t[j] - 20_000, side="right")) - 1, 0)
+        if i0 >= j:
+            return float(self.a[j])
+        rate = (self.a[j] - self.a[i0]) / (self.t[j] - self.t[i0])
+        return float(self.a[j] + rate * (t_query - self.t[j]))
 
 
 def run_filter(
@@ -185,7 +190,7 @@ def run_filter(
     out_ba, out_bg, out_bf = np.zeros((n_max, 3)), np.zeros((n_max, 3)), np.zeros(n_max)
     out_ws = np.zeros(n_max)
     n_out = 0
-    wheel_log, gnss_log = UpdateLog(), UpdateLog()
+    wheel_log, gnss_log, nhc_log = UpdateLog(), UpdateLog(), UpdateLog()
     last_imu: tuple[int, Tensor, Tensor] | None = None
     pending: list[tuple[int, int, int]] = []  # (time, sensor, row)
     fog_prev: float | None = (
@@ -217,6 +222,13 @@ def run_filter(
                 cfg.wheel,
                 learned(t, SensorId.WHEEL),
             )
+            if cfg.nonholonomic.enabled:
+                st, Pm, nd = update_nonholonomic(st, Pm, omega, params, cfg.nonholonomic)
+                nhc_log.t_us.append(t)
+                nhc_log.innovation.append(nd.innovation[0].numpy())
+                nhc_log.S.append(nd.S[0].numpy())
+                nhc_log.nis.append(float(nd.nis[0]))
+                nhc_log.accepted.append(bool(nd.accepted[0]))
             log = wheel_log
         else:
             z = torch.as_tensor(streams.gnss_ned[row, :2], dtype=D)[None]
@@ -355,6 +367,7 @@ def run_filter(
         estimate=est,
         wheel=wheel_log.arrays(),
         gnss=gnss_log.arrays(),
+        nonholonomic=nhc_log.arrays(),
         biases=biases,
         final_state=state,
         final_P=P,
