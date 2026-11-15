@@ -133,19 +133,30 @@ Gating, re-acquisition and interval splitting stay as they are. Gradients flow t
 
 All of these become named, commented parameters in `configs/parameters.yaml` (new `training` section) **once the user confirms the file is safe to edit**. Until then they live in this plan.
 
-### D7. Slow parameters (proposed 15 November 2026; awaiting the user's decision)
+### D7. Slow parameters (agreed 15 November 2026: option (a))
 
 Some quantities only affect the estimate over minutes, so 30 s chunks give them almost no gradient:
 - FOG bias random walk 1e-6 rad/s/√s adds only ~5.5e-6 rad/s (~1°/h) of bias uncertainty over a 30 s chunk: under 0.01° of heading in the loss window;
 - bias priors matter only at a true session start (other chunks start from A's cached covariance);
 - the GPS correlation time (55 s) exceeds the chunk length.
 
-**Proposal:**
+**Decision:**
 - **Fast group:** white noise levels, wheel σ, lateral σ, accelerometer/gyro/FOG white noise, plus stage 2 constants. Learned by gradient on 30 s chunks (D3).
 - **Slow group:** FOG and gyro bias priors and random walks, accelerometer bias random walk, GPS error-state σ and τ. Learned **jointly** (they trade against each other), with the fast group held at its learned values, by:
-  - (a) **full-session causal replays without gradient** over a small grid around the anchors (first choice: cheap, same horizon as A's tuning), or
-  - (b) long chunks (5–10 min) with gradient checkpointing, after a cost estimate.
+  **full-session causal replays without gradient** over a small grid around the anchors (same horizon and scoring as A's tuning). Long chunks with gradient checkpointing (5–10 min, after a cost estimate) are only a fallback, if the optimum lands on a grid edge with a clear gain.
 - GPS error states are tried only in this joint search, never alone (R7a failure).
+
+**Starting grid** (values finalised when the `training` section goes into `configs/parameters.yaml`):
+
+| Round | Varied | Values | Runs |
+|---|---|---|---|
+| 1 | FOG bias prior × FOG bias random walk (white GPS) | {3e-5, 1e-4, 3e-4} rad/s × {3e-7, 1e-6, 3e-6} rad/s/√s | 9 |
+| 2 | GPS error states on: correlated σ × τ, at the best FOG prior and the best FOG random walk ×{⅓, 1, 3} | {1.5, 2.53} m × {20, 55} s × 3 | 12 |
+| 3 (if time) | gyro and accelerometer bias random walks, one at a time | anchor ×{⅓, 3} | 4 |
+
+- Scored on the training days with A's score; the chosen point is confirmed on the validation days (full replays).
+- Report: the loss surface of each round (flat or not), the learned FOG bias noise next to the GPS noise, and GPS error states vs white GPS.
+- Cost: one full replay of the training days per run, parallel over sessions on local cores; measured on the first run before scheduling the rest.
 
 ## 3. Work order
 
@@ -156,7 +167,7 @@ flowchart TD
     W3 --> W4["4. Losses, gradcheck,<br/>finite differences, loss scan"]
     W4 --> W5["5. Simulation recovery"]
     W5 --> W6["6. Method B stage 1 on real data<br/>(local; cloud estimate if needed)"]
-    W6 --> W6a["6a. Slow group (D7):<br/>bias noise + GPS error model, jointly"]
+    W6 --> W6a["6a. Slow group (D7): full-session grid,<br/>bias noise + GPS error model, jointly"]
     W6a --> W7["7. Stage 2 model constants<br/>(incl. wheel scale value)"]
     W7 --> W7a["7a. Wheel-scale diagnostic"]
     W7a --> W8["8. Evaluate B vs A on validation days;<br/>report and review"]
@@ -170,7 +181,7 @@ flowchart TD
 | 4 | Loss module (task, innovation NLL, anchor penalty); gradient tests | D5 rows 1–3 pass |
 | 5 | Recovery experiment on simulated data | D5 row 4 passes |
 | 6 | B stage 1 trained; learned δ table | D5 row 5; validation-day comparison with A |
-| 6a | Slow group (D7): FOG/gyro bias priors and random walks with the GPS error model, jointly | Learned FOG bias noise and GPS noise reported together; GPS error states with vs without; loss flatness around the anchors |
+| 6a | Slow group (D7): grid of full-session replays over FOG/gyro bias priors and random walks with the GPS error model, jointly | Learned FOG bias noise and GPS noise reported together; GPS error states with vs without; loss flatness around the anchors |
 | 7 | Stage 2 constants (wheel scale value, encoder coefficient, bias priors) | Identifiability report per constant (incl. loss curvature at the optimum: nearly flat directions mixing e.g. FOG bias noise and GPS σ mean the data cannot separate them); learned scale vs the Phase 1 measurement |
 | 7a | **Wheel-scale diagnostic:** rerun the chained online scale state inside B (learned noise, GPS error states on), with and without learning `R_w` jointly | Does the free scale converge near the Phase 1 values (1.044–1.058) once correlated GPS error and the encoder term are handled? Identifies the absorbed error, or narrows the candidates |
 | 8 | Phase 4 report; review notes | User review |
