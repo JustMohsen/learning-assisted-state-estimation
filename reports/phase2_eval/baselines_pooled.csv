@@ -1,0 +1,7 @@
+method,split,n,coverage,pos_rmse_m,pos_mean_m,pos_median_m,pos_p95_m,pos_max_m,heading_rmse_deg,vel_rmse_mps
+raw GPS,train,2.545e+04,0.8897,143,14.31,3.727,15.45,5167,33.56,24.38
+raw GPS,validation,1296,0.8997,378.4,32.21,4.501,18.51,5905,38.08,72.74
+raw GPS,test,2865,0.8764,335.5,47.42,4.044,42.89,3825,42.21,76.01
+NCLT odometry,train,2.545e+04,0.9993,54.05,39.39,28.32,113.5,281.7,11.96,0.3349
+NCLT odometry,validation,1296,0.9992,110.8,85.82,73.5,221,379.6,24.68,0.5819
+NCLT odometry,test,2865,0.999,75.45,63.29,57.44,148,204.1,15.19,0.4067

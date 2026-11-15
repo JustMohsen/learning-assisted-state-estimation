@@ -19,6 +19,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "evo>=1.38.1",
     "ipykernel>=7.4.0",
     "jupyterlab>=4.6.6",
     "mypy>=2.4.1",
