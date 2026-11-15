@@ -2,21 +2,246 @@
 # and verified on later runs. Written by scripts/download_nclt.py.
 base_url: https://s3.us-east-2.amazonaws.com/nclt.perl.engin.umich.edu
 files:
+  covariance/cov_2012-01-08.csv:
+    size: 457841
+    sha256: 61151fc3ee48067a7711b8555afa5c1a89899fb2d0068e32b6c7acf98bb2ba5f
+  covariance/cov_2012-01-15.csv:
+    size: 533736
+    sha256: 4d4d995b5703b02e242d83467aa49c487555bec1c73fd1a3c2a86cf3a8ebbab1
   covariance/cov_2012-01-22.csv:
     size: 431013
     sha256: 671fbda3343ed3497598d41f88d8849a013fd75dca8a9c5fe73ccc0fce9ebcc9
+  covariance/cov_2012-02-02.csv:
+    size: 436661
+    sha256: 994e04719c0fa62f617b73b27ea4587cae097ed3b400bd89f6956d8e639a925e
+  covariance/cov_2012-02-04.csv:
+    size: 391830
+    sha256: 1d05a6771eb4071060c3eb8fac6040b840b88ba98582d30ad2845250a7a47cea
+  covariance/cov_2012-02-05.csv:
+    size: 461371
+    sha256: cd3a141791c3f0ca44f4b914cf99a264408a9a89f66159a57bc4d9d84f514d72
+  covariance/cov_2012-02-12.csv:
+    size: 404538
+    sha256: bde68cd126cf443dd564fbdf51a698662b34f6ff5e82e075694ffec023fe8e9e
+  covariance/cov_2012-02-18.csv:
+    size: 434190
+    sha256: eef97f661ac25afa6b1156220deaffefc82a73c7835d61edfb5e0e72d044418b
+  covariance/cov_2012-02-19.csv:
+    size: 432072
+    sha256: 1308f59084b57175486618ba4a96932732b36d29e8aa08733e80ff82452f768e
+  covariance/cov_2012-03-17.csv:
+    size: 410539
+    sha256: 0dd867eaa60cb228d23cf2d87e87231bbd1ec1f1b45431b3d3dda921195e5433
+  covariance/cov_2012-03-25.csv:
+    size: 409833
+    sha256: 5194d088b497f1120c8030f1027b3bfb25fb4b91038623f14a15734578dcb045
+  covariance/cov_2012-03-31.csv:
+    size: 422541
+    sha256: 7354d51c964f914739fe6a674e4b3905c5786d667381620540b21f39e80231ba
+  covariance/cov_2012-04-29.csv:
+    size: 350882
+    sha256: dfe9f7bf93713c990e88207f622f36846ca99e114c6291a288c855a672644674
+  covariance/cov_2012-05-11.csv:
+    size: 427130
+    sha256: b35ac1ac49c1da95b53eaba194b562deb5232f0cd64027e0378f7be1d927d0ab
+  covariance/cov_2012-05-26.csv:
+    size: 443368
+    sha256: 7a95ccdc0f11705634d3800b20aa5b6a2f5e1cbc46dc0f6bf2690cad3a2f4d85
+  covariance/cov_2012-06-15.csv:
+    size: 404891
+    sha256: 8c996ee093a72d93bb3f38030757c593d05904456d0f1c787d9951f462ded3aa
+  covariance/cov_2012-08-04.csv:
+    size: 389006
+    sha256: ac79ec3a750a2758e973f94dc53e6d2863bc64bebb399a8ea867c7936bd779b8
+  covariance/cov_2012-08-20.csv:
+    size: 425012
+    sha256: 8a7441be279ceaa9db02c3cf899c016ec15236578e5c3baecbab592fb83b6066
+  covariance/cov_2012-09-28.csv:
+    size: 396066
+    sha256: 5942de148f62391ab40d352d7be50b7465f6c3e93671daf08d2802262c51aa3d
+  covariance/cov_2012-10-28.csv:
+    size: 403126
+    sha256: 6f344406d064c8033da656f66ef7eb553781a691b95637bc3887a4475c3f5c68
+  covariance/cov_2012-11-04.csv:
+    size: 342763
+    sha256: 1bc098a3bb1e1adbd4c5fb39e400f447e7577f18229e0d8f196ed06ff9ae31a9
+  covariance/cov_2012-11-16.csv:
+    size: 344175
+    sha256: 113aaf20e7629182d4080f161364ba3f0efee393f8ab7bdce427c4f1172ebb9f
+  covariance/cov_2012-11-17.csv:
+    size: 408774
+    sha256: 9cea0a544fe4090cb8cbfdbf03f9e3cbad08421319d602bba650a8a0132430b7
+  covariance/cov_2012-12-01.csv:
+    size: 356177
+    sha256: f3268bad1e7e7c9708a85af1ce1318f7fb3693c0a912cf4f517f353c2c019484
   covariance/cov_2013-01-10.csv:
     size: 81543
     sha256: 7d698acbcadf5958c6df0813e67f20813c2c13effcc774c5515b179ce6f3704c
+  covariance/cov_2013-02-23.csv:
+    size: 375945
+    sha256: 6839da69e6ce4174f12fd0e659e07d53a735e6e66f0647a9ac8e30ef38001747
+  covariance/cov_2013-04-05.csv:
+    size: 324407
+    sha256: 2ad1cf6e4f46cc392fef1971d9c655a076465703978159c1f884320ca5ebf1a5
+  ground_truth/groundtruth_2012-01-08.csv:
+    size: 115860468
+    sha256: 4a4f3406026a3b65b858eb0a75e22a5192c209a67619cb301605de1333f8e941
+  ground_truth/groundtruth_2012-01-15.csv:
+    size: 138202571
+    sha256: a3c1c7af0fb6c8a87b6102efa7301150c98b97117f52fae7d028e182bd0fad8f
   ground_truth/groundtruth_2012-01-22.csv:
     size: 107741080
     sha256: 5ada1a85f2b6f11380aaceb124bf4b2067cf3cc28b7b8eb1c700e4737b00260f
+  ground_truth/groundtruth_2012-02-02.csv:
+    size: 120536510
+    sha256: cd56275f0d058a15f69d0c51db161841c808e80a30ac075d2ff9eebad3bb59c7
+  ground_truth/groundtruth_2012-02-04.csv:
+    size: 95997005
+    sha256: 9400e0854869a3e3dc1a079542758cce6a83faa49bca3665f9e4d062026934f3
+  ground_truth/groundtruth_2012-02-05.csv:
+    size: 115575427
+    sha256: 243d08020efd9bf5c353b1b126db8da750bc8be10053096dfbd2c3150b240531
+  ground_truth/groundtruth_2012-02-12.csv:
+    size: 106031306
+    sha256: c57344bb4e2240448a5de0e93be319a8474919e023fa37dfcdc1bacdda2ab682
+  ground_truth/groundtruth_2012-02-18.csv:
+    size: 110084959
+    sha256: d1f484353fde60af104b0960d740b4645e72d12619d0de5f8f16227e72af7b6a
+  ground_truth/groundtruth_2012-02-19.csv:
+    size: 109904253
+    sha256: 0ba7fc082824af953d9ae6c556f8fc51aa4b10be2289128c598f183d7e246f9f
+  ground_truth/groundtruth_2012-03-17.csv:
+    size: 102328425
+    sha256: 7c921a72a272c120d00c21db3f1ae20d006c48c17daa4e3c4c5694695f237e53
+  ground_truth/groundtruth_2012-03-25.csv:
+    size: 99444182
+    sha256: 002ffda2770c055aa35b1274811e1648cc1f56d8e59608387259ce0bf0cc1fd7
+  ground_truth/groundtruth_2012-03-31.csv:
+    size: 108174094
+    sha256: bda25161bf3685d5b40d6edbd70a4cbecc57ad7cae25781d5c89575208574f29
+  ground_truth/groundtruth_2012-04-29.csv:
+    size: 53339022
+    sha256: d60a6fcc62c5c2db789b54cb2d7ff5627ae2035a9e9dcb6da2b0b1aa3141bf96
+  ground_truth/groundtruth_2012-05-11.csv:
+    size: 104357284
+    sha256: 8d00240fb6c980e7e56727113421bd502f82a1378e175266c2c22692721022c9
+  ground_truth/groundtruth_2012-05-26.csv:
+    size: 108555096
+    sha256: ca322964c96d09010d842196ffa7ee3ebda338f997d3d9b7e8c338c88c45f710
+  ground_truth/groundtruth_2012-06-15.csv:
+    size: 67250661
+    sha256: d480a45855114343d39481d7fe6b24747f958b88cc6f2ecf43df30ff3f2c367e
+  ground_truth/groundtruth_2012-08-04.csv:
+    size: 98328239
+    sha256: 3d5c767b593ad0ffbb12d99e09f4e2f93338777992f6b4324e0e6487be731424
+  ground_truth/groundtruth_2012-08-20.csv:
+    size: 101745228
+    sha256: 8d5950db9f36d04d99c819b317df10e7250510ed80297daf54fd91c52518eb62
+  ground_truth/groundtruth_2012-09-28.csv:
+    size: 94668692
+    sha256: 8cd5e087159586a254ab1c7fba604465e8a1259772b4a9a51571ab19a142c253
+  ground_truth/groundtruth_2012-10-28.csv:
+    size: 105105457
+    sha256: 03969501140c6d7c7d493de9e7f84d6096f5ae15e509f7f32b0c624616fbf6b6
+  ground_truth/groundtruth_2012-11-04.csv:
+    size: 97937769
+    sha256: 096b270a74ac2ecec860303ac5cd60c0d4e49c4c5b756672552d013d5eaa29ae
+  ground_truth/groundtruth_2012-11-16.csv:
+    size: 99269736
+    sha256: 257eed97fc974dcbe6f15baf25611377940cc3e1efe7662ab8e69482a4bd3c6d
+  ground_truth/groundtruth_2012-11-17.csv:
+    size: 108314833
+    sha256: 7ef8dbb5c62522ecb686ebb58fb45523e872c45fb15985d57d1de24b5915d0df
+  ground_truth/groundtruth_2012-12-01.csv:
+    size: 93119304
+    sha256: 128e7df6576018f16d3fb60cf78b14d8f599dd3f254ac02979623a405170becd
   ground_truth/groundtruth_2013-01-10.csv:
     size: 20669309
     sha256: 4301c74fecc9578353a2f373f50320de97542962240fc314389bf6fdd9063b63
+  ground_truth/groundtruth_2013-02-23.csv:
+    size: 97523906
+    sha256: ae5835d4ee83e43343bed94bf730473e2b25411fe7680be90712bcd34a2e3ad8
+  ground_truth/groundtruth_2013-04-05.csv:
+    size: 84742649
+    sha256: b0728e1c47993ec82240f859e53f25b162b6e8580a5f845fc3d1933843726cc0
+  sensor_data/2012-01-08_sen.tar.gz:
+    size: 119476983
+    sha256: 13a0d43bd41402a38bbedf7d59e4ebf37bb304f535fdae3e69828dac0f12414c
+  sensor_data/2012-01-15_sen.tar.gz:
+    size: 142352784
+    sha256: c3297999002044e4998531c0f78736afb80fe5409e08f94a5597fe816cd92ed6
   sensor_data/2012-01-22_sen.tar.gz:
     size: 111648041
     sha256: cc2d5917eca463ce59bd2307c46b2458f74c01d20022ee469e99752e09b3bf3d
+  sensor_data/2012-02-02_sen.tar.gz:
+    size: 124485782
+    sha256: a2baa412e29951c35ac6d010230687da0781a6487d180f1c347e703e436d432e
+  sensor_data/2012-02-04_sen.tar.gz:
+    size: 99712568
+    sha256: e3e1cc9e0307bb88932d675e513a905dfb7534d080ee86ea0b85bb39deb37830
+  sensor_data/2012-02-05_sen.tar.gz:
+    size: 119475528
+    sha256: 3897ecd05cc26fba1cb9e502759b54ae9a298e509868b1a92db326b4c6c9bdce
+  sensor_data/2012-02-12_sen.tar.gz:
+    size: 109221725
+    sha256: d7a66dfc45ef030520003292228d61a9b5aab3482cc704f5e393fa668243c7fd
+  sensor_data/2012-02-18_sen.tar.gz:
+    size: 113244551
+    sha256: 7ae675cf1020c50fd17edb7d3b13eb5fc61117c2314b634b455d9a537b96323b
+  sensor_data/2012-02-19_sen.tar.gz:
+    size: 113698522
+    sha256: 4e7e9b6d0cffdbd3cdf5d420db56f0701810ecf1c8b30e6464c3bb2272b50bf2
+  sensor_data/2012-03-17_sen.tar.gz:
+    size: 105651802
+    sha256: 2229025cd1ea5a6fe8dce0b9251e8d45f500ced08c7e685d8340bee236824044
+  sensor_data/2012-03-25_sen.tar.gz:
+    size: 102271131
+    sha256: 48cee1f128d62436df63d73575221e7682dc8afa7ca17c6a86de45adbdd4f7dd
+  sensor_data/2012-03-31_sen.tar.gz:
+    size: 111394097
+    sha256: a2473fa04cf9453114127728992c5e862159a48523ae4c5137c8396507848343
+  sensor_data/2012-04-29_sen.tar.gz:
+    size: 55167742
+    sha256: 13ec6c9e9a009c8f145829228e8600feaebff3e37646ad60ccaf7e23d88165a6
+  sensor_data/2012-05-11_sen.tar.gz:
+    size: 108371461
+    sha256: 542ead2c3a1daa294c0de87b58780a5cc6fe51c5e8aae04b207f8b87b6258dcc
+  sensor_data/2012-05-26_sen.tar.gz:
+    size: 112313848
+    sha256: a4a1f5ab2f8beac5e1e722ae3317d8199a1c5c82e9577d5e64108b0cef0b1461
+  sensor_data/2012-06-15_sen.tar.gz:
+    size: 69488739
+    sha256: fbc63ccf0ce780727c28c2a933073fb8e6d5cc840f42a939e3c41aa2d2ffa117
+  sensor_data/2012-08-04_sen.tar.gz:
+    size: 101652700
+    sha256: 78a41cd007a3cf0658c05318cb7ed7f1281e08da9cf8d03e82a92fecb89ce2aa
+  sensor_data/2012-08-20_sen.tar.gz:
+    size: 105361068
+    sha256: 9873577d17e56046f0a1facfbea5ce20f04004cdc710cc723013454463b159ed
+  sensor_data/2012-09-28_sen.tar.gz:
+    size: 98389749
+    sha256: 726d075bde7b1bdeeef4d60674d7fd6c912d44cff6fb7d18eca0f3848d8e8ccc
+  sensor_data/2012-10-28_sen.tar.gz:
+    size: 108729877
+    sha256: b0160bd1f86361f6ad037f4edebe596c6d30a83513f0bb6ab9446a4ab7a77c71
+  sensor_data/2012-11-04_sen.tar.gz:
+    size: 101352381
+    sha256: d97dbdc83302373811d92be86dd9195785555d481c324c7ddfafe609c1c83c2c
+  sensor_data/2012-11-16_sen.tar.gz:
+    size: 102682809
+    sha256: b96b1410b0e652821e5c4f05ac86a9c457339048b9312a9006df383402f88f57
+  sensor_data/2012-11-17_sen.tar.gz:
+    size: 112078111
+    sha256: fa8f3faee0dea6c2efe86670e5d2309b22836726493a19324ca9ed41c57bd000
+  sensor_data/2012-12-01_sen.tar.gz:
+    size: 96484625
+    sha256: ef299c3d40c2ac250abf7690170a6b7d75641019b36e69be8cebc31e3484d922
   sensor_data/2013-01-10_sen.tar.gz:
     size: 21669014
     sha256: 3ec1a5ac27ee716e6e5da0cd4e8fee96241d6a21ac63d14a844c40d2410d5ffb
+  sensor_data/2013-02-23_sen.tar.gz:
+    size: 100961203
+    sha256: c84609f87eb7a3456186fd0d228dd9c7e95a0d70ccf59b05ee317ea4cddb0627
+  sensor_data/2013-04-05_sen.tar.gz:
+    size: 87590162
+    sha256: 7e60c7149a385cfb4cf28b684f77c6c2bbea70e7fdd228d11898be10ffdff34b

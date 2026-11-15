@@ -134,7 +134,7 @@ class RtkErrorRecord(_Base):
     err: F64  # (N,)
 
 
-def _read(path: Path, ncols: int) -> tuple[I64, F64]:
+def read_numeric_csv(path: Path, ncols: int) -> tuple[I64, F64]:
     """Read a headerless numeric CSV: int64 timestamps and float64 value columns."""
     df = pd.read_csv(
         path,
@@ -164,7 +164,7 @@ def _flag(flags: U16, mask: B, flag: RowFlag) -> None:
 def load_imu(path: Path, limits: RawLimits | None = None) -> ImuRecord:
     """Load ``ms25.csv``: utime, mag xyz, acc xyz, gyro xyz."""
     lim = limits or RawLimits()
-    t, v = _read(path, 10)
+    t, v = read_numeric_csv(path, 10)
     mag, acc, gyr = v[:, 0:3], v[:, 3:6], v[:, 6:9]
     flags = _time_flags(t)
     _flag(flags, ~np.isfinite(acc).all(1) | ~np.isfinite(gyr).all(1), RowFlag.NON_FINITE)
@@ -179,7 +179,7 @@ def load_imu(path: Path, limits: RawLimits | None = None) -> ImuRecord:
 
 def load_fog(path: Path) -> FogRecord:
     """Load ``kvh.csv``: utime, integrated heading angle (rad)."""
-    t, v = _read(path, 2)
+    t, v = read_numeric_csv(path, 2)
     angle = v[:, 0].copy()
     flags = _time_flags(t)
     _flag(flags, ~np.isfinite(angle), RowFlag.NON_FINITE)
@@ -189,7 +189,7 @@ def load_fog(path: Path) -> FogRecord:
 def load_wheels(path: Path, limits: RawLimits | None = None) -> WheelRecord:
     """Load ``wheels.csv``: utime, left speed, right speed (m/s)."""
     lim = limits or RawLimits()
-    t, v = _read(path, 3)
+    t, v = read_numeric_csv(path, 3)
     flags = _time_flags(t)
     _flag(flags, ~np.isfinite(v).all(1), RowFlag.NON_FINITE)
     _flag(flags, (np.abs(v) > lim.max_wheel_speed_mps).any(1), RowFlag.OUT_OF_RANGE)
@@ -199,7 +199,7 @@ def load_wheels(path: Path, limits: RawLimits | None = None) -> WheelRecord:
 def load_gps(path: Path, limits: RawLimits | None = None) -> GpsRecord:
     """Load ``gps.csv`` or ``gps_rtk.csv``: utime, mode, num_sats, lat, lon, alt, track, speed."""
     lim = limits or RawLimits()
-    t, v = _read(path, 8)
+    t, v = read_numeric_csv(path, 8)
     mode = np.nan_to_num(v[:, 0], nan=-1).astype(np.int64)
     lat, lon, alt = v[:, 2].copy(), v[:, 3].copy(), v[:, 4].copy()
     flags = _time_flags(t)
@@ -229,7 +229,7 @@ def load_gps(path: Path, limits: RawLimits | None = None) -> GpsRecord:
 
 def load_euler(path: Path) -> EulerRecord:
     """Load ``ms25_euler.csv``: utime, roll, pitch, heading (rad). Diagnostic only."""
-    t, v = _read(path, 4)
+    t, v = read_numeric_csv(path, 4)
     flags = _time_flags(t)
     _flag(flags, ~np.isfinite(v).all(1), RowFlag.NON_FINITE)
     return EulerRecord(t_us=t, flags=flags, rpy=v.copy())
@@ -237,7 +237,7 @@ def load_euler(path: Path) -> EulerRecord:
 
 def load_odometry(path: Path) -> OdometryRecord:
     """Load ``odometry_mu.csv`` / ``odometry_mu_100hz.csv``: utime, x, y, z, roll, pitch, yaw."""
-    t, v = _read(path, 7)
+    t, v = read_numeric_csv(path, 7)
     flags = _time_flags(t)
     _flag(flags, ~np.isfinite(v).all(1), RowFlag.NON_FINITE)
     return OdometryRecord(t_us=t, flags=flags, pose=v.copy())
@@ -245,7 +245,7 @@ def load_odometry(path: Path) -> OdometryRecord:
 
 def load_rtk_error(path: Path) -> RtkErrorRecord:
     """Load ``gps_rtk_err.csv``: utime, error (m). Diagnostic only."""
-    t, v = _read(path, 2)
+    t, v = read_numeric_csv(path, 2)
     flags = _time_flags(t)
     _flag(flags, ~np.isfinite(v[:, 0]), RowFlag.NON_FINITE)
     return RtkErrorRecord(t_us=t, flags=flags, err=v[:, 0].copy())

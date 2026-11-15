@@ -1,0 +1,60 @@
+# NCLT frames and sensor mounting. Every value cites a source or is marked estimated.
+# Source abbreviations:
+#   paper = Carlevaris-Bianco, Ushani, Eustice, "University of Michigan North Campus
+#           Long-Term Vision and Lidar Dataset", IJRR 2016 (https://robots.engin.umich.edu/nclt/nclt.pdf)
+#   gt_reader = official read_ground_truth.py (NCLT site)
+#
+# Conventions (paper Sec. 3): a 6-DOF transform x_ij = [x, y, z, roll, pitch, yaw] gives the
+# translation from frame i to frame j expressed in frame i, and R_ij = Rz(yaw) Ry(pitch) Rx(roll)
+# maps vectors from frame j into frame i (our C_ij). Angles below are in degrees.
+
+local_frame:
+  description: >-
+    Local tangent frame, x North, y East, z Down, defined by linearising GPS coordinates
+    around a fixed origin (paper Sec. 3, Eqs. 1-2, Table 3). Ground truth is expressed in it.
+  lat_origin_deg: 42.293227      # paper Table 3
+  lon_origin_deg: -83.709657     # paper Table 3
+  alt_origin_m: 270.0            # paper Table 3
+  earth_equatorial_radius_m: 6378135.0   # paper Table 3
+  earth_polar_radius_m: 6356750.0        # paper Table 3
+  source: paper Sec. 3, Table 3
+
+body_frame:
+  description: >-
+    Centred on the axle between the Segway's wheels; x forward, y right, z down
+    (paper Sec. 3). Ground-truth poses are body-frame poses in the local frame (gt_reader).
+  source: paper Sec. 3; gt_reader
+
+sensors:                         # x_body,sensor: position of sensor in body frame + orientation
+  imu:
+    xyz_m: [-0.11, -0.18, -0.71]
+    rpy_deg: [0.0, 0.0, 0.0]
+    status: published
+    source: paper Table 4 (manually calibrated, paper Sec. 5.4)
+  fog:
+    xyz_m: [0.0, -0.25, -0.49]
+    rpy_deg: [0.0, 0.0, 0.0]
+    status: published
+    source: paper Table 4 (manually calibrated, paper Sec. 5.4); measures rotation about its z axis
+  gps:
+    xyz_m: [0.0, -0.25, -0.51]
+    rpy_deg: null                # antenna: orientation not applicable
+    status: published
+    source: paper Table 4 (Garmin consumer GPS)
+  rtk:
+    xyz_m: [-0.24, 0.0, -1.24]
+    rpy_deg: null
+    status: published
+    source: paper Table 4 (NovAtel RTK; diagnostic only)
+
+wheels:
+  speed_reference: >-
+    Mean of left and right speeds is the speed at the centre of the wheelbase
+    (paper Sec. 4, Eq. 4), i.e. at the body-frame origin.
+  track_width_m: null            # not published; to be estimated in Phase 1 check V4
+  track_width_status: to_estimate
+  source: paper Sec. 4
+
+timing:
+  fog: "timestamped by message arrival time (paper Sec. 5.5); expect jitter/latency"
+  others: "time-synchronised per Olson 2010 on one logging computer (paper Sec. 5.5)"
