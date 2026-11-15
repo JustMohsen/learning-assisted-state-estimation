@@ -1,0 +1,35 @@
+# Error models fitted to real NCLT training days (Phase 2 hardening, step 10;
+# reports/phase2_eval/sim_fit.json). Residuals vs the reference include reference error,
+# so noise levels are upper bounds. IMU noise is not identifiable from the data (Segway
+# balancing at rest; real high-frequency motion while driving) and keeps nominal values.
+name: realistic
+trajectory:
+  lowpass_hz: 1.0        # position/roll/pitch: best match to real accelerometer content
+  lowpass_yaw_hz: 5.0    # yaw: best match to real yaw-rate content
+gps:
+  white_sigma_m: 1.44
+  white_tau_s: 1.0        # fitted at 1 Hz; correlated within ~1 s at 7 Hz (fewer threshold crossings)
+  gm_sigma_m: 2.53
+  gm_tau_s: 55.0
+  held_prob: 0.01
+  mode2_frac: 0.44
+  mode_dwell_s: 0.15       # fix mode alternates almost every fix in the real data
+  mode2_vertical_factor: 1.0
+  multipath_rate_per_hour: 16.0
+  multipath_duration_median_s: 3.5
+  multipath_duration_log_sigma: 2.0   # heavy tail: real p90 duration 47 s
+  multipath_offset_m: [8.0, 40.0]
+  gross_rate_per_hour: 3.4
+  gross_duration_median_s: 14.0
+  gross_duration_log_sigma: 1.0
+  gross_offset_min_m: 50.0           # offset = 50 m + log-normal excess: median 81 m, p90 1021 m
+  gross_offset_excess_median_m: 31.0
+  gross_offset_log_sigma: 2.69
+  gross_offset_max_m: 6000.0
+wheels:
+  noise_mps: 0.05          # per wheel; mean-speed residual robust std 0.035 m/s
+  slip:
+    rate_per_min: 0.033    # matches the per-session median of detected excursions (pooled rate 0.09 is dominated by a few sessions)
+    duration_s: [0.5, 1.4]
+    overspeed_frac: [0.2, 0.7]
+    asymmetric_prob: 0.5   # not identifiable from the data

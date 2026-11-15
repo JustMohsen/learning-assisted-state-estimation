@@ -58,6 +58,7 @@ class GpsErrors(Config):
     """Consumer-GPS error model (horizontal metres; vertical scaled)."""
 
     white_sigma_m: float = 1.5
+    white_tau_s: float = 0.0  # 0: white per fix; > 0: fast Gauss-Markov with this time constant
     gm_sigma_m: float = 2.5  # first-order Gauss-Markov (correlated) error, per axis
     gm_tau_s: float = 60.0
     vertical_factor: float = 1.5
@@ -69,6 +70,20 @@ class GpsErrors(Config):
     outage_rate_per_hour: float = 0.0  # injected outages, on top of real gaps
     outage_duration_s: tuple[float, float] = (30.0, 120.0)
     held_prob: float = 0.0
+    # Error episodes (constant horizontal offset in a random direction for the episode):
+    # multipath (moderate) and gross (receiver failures, up to km), both Poisson in time with
+    # log-normal durations and offset magnitudes (Phase 2 fit to real data, step 10).
+    multipath_rate_per_hour: float = 0.0
+    multipath_duration_median_s: float = 2.2
+    multipath_duration_log_sigma: float = 1.5
+    multipath_offset_m: tuple[float, float] = (8.0, 40.0)  # log-uniform range
+    gross_rate_per_hour: float = 0.0
+    gross_duration_median_s: float = 14.0
+    gross_duration_log_sigma: float = 1.0
+    gross_offset_min_m: float = 50.0  # offset = min + log-normal excess, capped at max
+    gross_offset_excess_median_m: float = 31.0
+    gross_offset_log_sigma: float = 2.69
+    gross_offset_max_m: float = 6000.0
     mode2_frac: float = 0.4  # fraction of time in 2D-fix mode (Markov chain)
     mode_dwell_s: float = 30.0
     mode2_vertical_factor: float = 5.0

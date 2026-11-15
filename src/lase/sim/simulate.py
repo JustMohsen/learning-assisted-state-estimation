@@ -44,6 +44,7 @@ class SimTruth:
     gps_outlier: B
     gps_held: B
     gps_outage_spans: list[Span]
+    gps_episode_spans: list[Span]
 
 
 @dataclass(frozen=True)
@@ -141,5 +142,6 @@ def simulate_session(
         gps_outlier=gps.outlier,
         gps_held=gps.held,
         gps_outage_spans=gps.outage_spans,
+        gps_episode_spans=gps.episode_spans,
     )
     return SimRun(streams=streams, reference=_reference_from_truth(traj), truth=truth)

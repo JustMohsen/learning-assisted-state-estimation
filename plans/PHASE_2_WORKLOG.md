@@ -18,6 +18,10 @@ Execution log for [PHASE_2_SIM_EVAL.md](./PHASE_2_SIM_EVAL.md). Run rules: [AUTO
 - **Outage reference points:** 'GPS hold' (repeat last fix: no dead reckoning) and 'odometry (oracle-anchored)' (NCLT odometry restarted from the true pose at each outage start; non-causal, diagnostic only).
 - **Baselines:** raw GPS (antenna minus course-rotated lever arm; velocity/course from fixes >= 1 s apart) and NCLT odometry aligned by the agreed common initial-pose prior (SE(2) at the first reference time).
 - **evo** added as a dev dependency for the E1 cross-check only.
+- **Fitted error models (training days only; scripts/fit_sim_errors.py -> reports/phase2_eval/sim_fit.json):** GPS inliers = 1.44 m 'white' + 2.53 m Gauss-Markov (tau 55 s), very close to the earlier defaults. GPS errors > 10 m are episodic (about 22-27 runs/h, median 2.2 s, p90 47 s; only 32% isolated fixes). Gross episodes (> 50 m) about 3.4/h, median 14 s, offsets median 81 m, p90 1 km, max 5 km. Fix mode alternates almost per fix, with nearly equal accuracy (2.94 vs 2.78 m), so no separate mode-2 noise is needed. Held fixes 0.7-1%. Wheel mean-speed residual robust std 0.035 m/s; slip-like excursions are strongly session-dependent (session median 0.019/moving-min, pooled 0.09).
+- **New simulator mechanisms:** episodic GPS errors (multipath: Poisson, log-normal durations, log-uniform 8-40 m offsets; gross: Poisson, log-normal durations, offset = 50 m + log-normal excess), optional fast Gauss-Markov for the 'white' GPS component (white_tau_s), and a separate yaw low-pass cutoff (lowpass_yaw_hz). All default to off, so existing scenarios are unchanged.
+- **Truth-trajectory cutoffs for 'realistic' (trade-off, open question):** the reference contains spurious high-frequency roll/pitch/position content that, through the 0.71 m IMU lever arm, produces lateral and vertical accelerations several times larger than the real IMU sees. Position/roll/pitch 1 Hz + yaw 5 Hz best match the real accelerometer and yaw-rate content but remove real roll-rate dynamics (sim 0.017 vs real 0.10 rad/s). The likely cause is that smoothing position and attitude independently breaks the physical coupling (the Segway rolls about its wheel contact points). A physically coupled trajectory model would fix it.
+- **IMU noise is not identified from data:** at rest the Segway balances (accelerometer x 0.065 m/s^2, gyro y/z 0.015-0.027 rad/s from motion); the quietest axes bound sensor noise (accelerometer z 0.002 m/s^2, gyro x 0.0025 rad/s). The realistic scenario keeps the nominal IMU noise (0.02 / 0.003).
 
 ## Steps
 
@@ -30,6 +34,14 @@ Execution log for [PHASE_2_SIM_EVAL.md](./PHASE_2_SIM_EVAL.md). Run rules: [AUTO
 - [x] 7. Consistency statistics (NEES/NIS, coverage), plots
 - [x] 8. Baselines (raw GPS, NCLT odometry) + `evo` cross-check (E1–E2)
 - [x] 9. Phase 2 report + summary; update README status
+
+### Hardening (added 15 November ~02:55, after the user paused Phase 3)
+
+- [x] 10. Fit simulator error models to real data (training days only): GPS residual decomposition (white / Gauss–Markov / tau, outliers and gross-outlier episodes, fix modes, held fixes), wheel residuals and slip-like excursions, at-rest IMU variability, FOG residuals → `configs/sim/realistic.yaml` + report
+- [x] 11. Simulator validation across several sessions and scenarios (S1–S3 + realism comparison: simulated vs real residual statistics) + tests
+- [ ] 12. Standard evaluation entry point (`evaluate_estimate`: nodes/dense metrics, RPE, injected and natural outage curves, consistency) + tests
+- [ ] 13. Harness edge cases (empty or short estimates, NaN fields, truncated sessions, no outage candidates) + tests
+- [ ] 14. Update the Phase 2 report; write `plans/REVIEW_PHASES.md` (Phases 1–2 decisions, questions, Phase 3 draft decisions)
 
 ## Questions for the user
 
@@ -50,6 +62,9 @@ Execution log for [PHASE_2_SIM_EVAL.md](./PHASE_2_SIM_EVAL.md). Run rules: [AUTO
 - 2026-11-15 02:03: Step 8 done: baselines.py + scripts/evaluate_baselines.py -> reports/phase2_eval/. E1: position RMSE equals evo APE exactly. E2: reference scores itself at 6 mm (nodes, causal association) / 0 (dense). Pooled (test days): raw GPS median 4.0 m but RMSE 336 m (outliers); NCLT odometry RMSE 75 m, heading 15 deg. Outages (232): GPS hold median 15/62/109 m at 10/60/120 s; oracle-anchored odometry 0.22/1.0/2.0 m. 7 unit + 2 validation tests.
 - 2026-11-15 02:03: Finding: consumer GPS has extreme outliers flagged as valid fixes: 1.4% of samples > 100 m and 0.4% > 1 km (up to 5.9 km), in 15 of 27 sessions. Robust GPS gating is mandatory in Phase 3.
 - 2026-11-15 02:03: Step 9 done: reports/phase2_eval/README.md; README status updated; Phase 2 summary written.
+- 2026-11-15 02:37: User instruction (~02:50): do not implement Phase 3; harden Phase 2; plan Phase 3 for discussion. Phase 3 prototype moved to branch phase3-prototype and reverted on main; hardening steps 10-14 added.
+- 2026-11-15 02:37: Step 10 done: sim/fit.py, scripts/fit_sim_errors.py, configs/sim/realistic.yaml (+ simulator GPS episodes, fast GM, yaw cutoff).
+- 2026-11-15 02:37: Step 11 done: scripts/validate_sim_realism.py (real vs simulated twins, 6 training sessions; reports/phase2_eval/sim_realism_*.csv). Realistic vs real (session medians): GPS median 0.995x, inlier sigma 1.06x, time > 10 m 0.94x, gross episodes 0.90x, held 0.97x, fix-mode fraction 1.06x, wheel residual 1.10x, wheel excursions 1.04x, yaw-rate content 1.00x, forward acceleration 0.87x; mismatches: > 10 m runs 1.7x, lateral/vertical acceleration 1.8x/2.4x, roll rate 0.18x (trajectory trade-off). Nominal scenario for comparison: no episodes or slip, 4.5x/5.9x accelerations. Simulator validation S1-S3 now runs on 3 sessions (train/train/validation, different seasons) plus a realistic-scenario GPS statistics test: 29 validation tests pass.
 
 ## Summary
 

@@ -23,7 +23,8 @@ class TrajectoryConfig(Config):
     """How the truth trajectory is derived from the reference."""
 
     resample_hz: float = 100.0
-    lowpass_hz: float = 2.0  # removes interpolation artefacts; Segway motion is slower
+    lowpass_hz: float = 2.0  # position, roll and pitch: removes reference interpolation artefacts
+    lowpass_yaw_hz: float | None = None  # yaw cutoff (None: same as lowpass_hz)
     lowpass_order: int = 4
     spline_degree: int = 5
 
@@ -129,7 +130,11 @@ def truth_from_reference(
     A = np.stack([np.interp(s, tt, rpy[:, k]) for k in range(3)], axis=1)
     sos = butter(cfg.lowpass_order, cfg.lowpass_hz, fs=cfg.resample_hz, output="sos")
     P = sosfiltfilt(sos, P, axis=0)
-    A = sosfiltfilt(sos, A, axis=0)
+    A[:, :2] = sosfiltfilt(sos, A[:, :2], axis=0)
+    sos_yaw = butter(
+        cfg.lowpass_order, cfg.lowpass_yaw_hz or cfg.lowpass_hz, fs=cfg.resample_hz, output="sos"
+    )
+    A[:, 2] = sosfiltfilt(sos_yaw, A[:, 2])
     return TruthTrajectory(
         t0_us=int(grid[0]),
         t1_us=int(grid[-1]),

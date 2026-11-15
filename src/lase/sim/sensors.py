@@ -144,6 +144,35 @@ def simulate_wheels(
     return WheelSim(left, right, slip, spans)
 
 
+def episode_offsets(
+    t_us: I64,
+    rate_per_hour: float,
+    dur_median_s: float,
+    dur_log_sigma: float,
+    sample_magnitude: object,
+    rng: np.random.Generator,
+) -> tuple[F64, list[Span]]:
+    """Piecewise-constant horizontal offsets (N, 3) during Poisson episodes."""
+    off = np.zeros((len(t_us), 3))
+    spans: list[Span] = []
+    if rate_per_hour <= 0 or len(t_us) == 0:
+        return off, spans
+    t = float(t_us[0])
+    while True:
+        t += rng.exponential(3600.0 / rate_per_hour) * 1e6
+        if t >= t_us[-1]:
+            break
+        d = float(np.exp(np.log(dur_median_s) + dur_log_sigma * rng.normal())) * 1e6
+        a, b = int(t), int(min(t + d, t_us[-1]))
+        mag = float(sample_magnitude())  # type: ignore[operator]
+        ang = rng.uniform(0, 2 * np.pi)
+        m = (t_us >= a) & (t_us < b)
+        off[m] += mag * np.array([np.cos(ang), np.sin(ang), 0.0])
+        spans.append((a, b))
+        t = b
+    return off, spans
+
+
 @dataclass(frozen=True)
 class GpsSim:
     t_us: I64  # after injected outages
@@ -156,6 +185,7 @@ class GpsSim:
     outlier: B
     held: B
     outage_spans: list[Span]
+    episode_spans: list[Span]  # multipath and gross episodes (truth)
 
 
 def _markov_mode(t_us: I64, frac2: float, dwell_s: float, rng: np.random.Generator) -> I64:
@@ -203,11 +233,41 @@ def simulate_gps(
         int(t_us[0]), int(t_us[-1]), err.burst_rate_per_min / 60.0, err.burst_duration_s, rng
     )
     mult = np.where(in_spans(t, bursts), err.burst_sigma_factor, 1.0)
-    white = rng.normal(0, 1, (n, 3)) * err.white_sigma_m * mult[:, None]
+    white = rng.normal(0, 1, (n, 3))
+    if err.white_tau_s > 0 and n:  # fast Gauss-Markov (unit variance), then scaled
+        dtw = np.diff(t, prepend=t[0]) * 1e-6
+        phw = np.exp(-dtw / err.white_tau_s)
+        for i in range(1, n):
+            white[i] = phw[i] * white[i - 1] + np.sqrt(1 - phw[i] ** 2) * white[i]
+    white = white * err.white_sigma_m * mult[:, None]
     outlier = rng.uniform(size=n) < err.outlier_prob
     jumps = rng.normal(0, err.outlier_sigma_m, (n, 3)) * outlier[:, None]
+    lo, hi = np.log(err.multipath_offset_m[0]), np.log(err.multipath_offset_m[1])
+    mp, mp_spans = episode_offsets(
+        t,
+        err.multipath_rate_per_hour,
+        err.multipath_duration_median_s,
+        err.multipath_duration_log_sigma,
+        lambda: np.exp(rng.uniform(lo, hi)),
+        rng,
+    )
+    gr, gr_spans = episode_offsets(
+        t,
+        err.gross_rate_per_hour,
+        err.gross_duration_median_s,
+        err.gross_duration_log_sigma,
+        lambda: min(
+            err.gross_offset_max_m,
+            err.gross_offset_min_m
+            + np.exp(
+                np.log(err.gross_offset_excess_median_m) + err.gross_offset_log_sigma * rng.normal()
+            ),
+        ),
+        rng,
+    )
+    outlier = outlier | (np.linalg.norm(mp + gr, axis=1) > 0)
     mode = _markov_mode(t, err.mode2_frac, err.mode_dwell_s, rng)
-    e = (gm + white + jumps) * vf
+    e = (gm + white + jumps) * vf + mp + gr
     e[:, 2] *= np.where(mode == 2, err.mode2_vertical_factor, 1.0)
     meas = p_ant + e
     held = np.zeros(n, dtype=bool)
@@ -218,4 +278,6 @@ def simulate_gps(
             e[j] = meas[j] - p_ant[j]
     proj = LocalProjection.from_config(cal.local_frame)
     lat, lon, alt = proj.to_geodetic(meas)
-    return GpsSim(t, lat, lon, alt, mode, e, mult, outlier, held, outages)
+    return GpsSim(
+        t, lat, lon, alt, mode, e, mult, outlier, held, outages, sorted(mp_spans + gr_spans)
+    )
