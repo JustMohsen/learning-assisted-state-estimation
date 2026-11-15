@@ -51,6 +51,7 @@ class GraphNodes:
     cov: F64  # (M, 6, 6) over [x, y, z, roll, pitch, yaw]
     gt_index: I64  # nearest valid dense ground-truth row
     gt_offset_us: I64  # dense-row time minus node time
+    valid: B  # node has a dense ground-truth row within the matching tolerance
 
     def __len__(self) -> int:
         return len(self.t_us)
@@ -73,8 +74,13 @@ def _upper_to_full(u: F64) -> F64:
     return full
 
 
-def load_graph_nodes(path: Path, gt: GroundTruth) -> GraphNodes:
-    """Load ``cov_<date>.csv`` (utime + 21 upper-triangular covariance entries) and match to ``gt``."""
+def load_graph_nodes(path: Path, gt: GroundTruth, max_offset_us: int = 50_000) -> GraphNodes:
+    """Load ``cov_<date>.csv`` (utime + 21 upper-triangular covariance entries) and match to ``gt``.
+
+    Nodes without a valid dense ground-truth row within ``max_offset_us`` are marked
+    invalid. This happens in truncated releases (e.g. 2012-04-29, 2012-06-15), whose
+    covariance files list nodes beyond the end of the released ground truth.
+    """
     t, v = read_numeric_csv(path, 22)
     valid_idx = np.flatnonzero(gt.valid)
     tv = gt.t_us[valid_idx]
@@ -82,7 +88,14 @@ def load_graph_nodes(path: Path, gt: GroundTruth) -> GraphNodes:
     nearer_left = (t - tv[j - 1]) <= (tv[j] - t)
     k = np.where(nearer_left, j - 1, j)
     idx = valid_idx[k]
-    return GraphNodes(t_us=t, cov=_upper_to_full(v), gt_index=idx, gt_offset_us=gt.t_us[idx] - t)
+    offset = gt.t_us[idx] - t
+    return GraphNodes(
+        t_us=t,
+        cov=_upper_to_full(v),
+        gt_index=idx,
+        gt_offset_us=offset,
+        valid=np.abs(offset) <= max_offset_us,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,13 +107,13 @@ class Reference:
 
     @property
     def node_p_w(self) -> F64:
-        """Graph-node positions (M, 3)."""
+        """Graph-node positions (M, 3); use together with ``nodes.valid``."""
         out: F64 = self.gt.p_w[self.nodes.gt_index]
         return out
 
     @property
     def node_rpy(self) -> F64:
-        """Graph-node Euler angles (M, 3)."""
+        """Graph-node Euler angles (M, 3); use together with ``nodes.valid``."""
         out: F64 = self.gt.rpy[self.nodes.gt_index]
         return out
 

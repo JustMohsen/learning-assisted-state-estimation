@@ -18,7 +18,9 @@ def _write_session(tmp_path: Path) -> tuple[Path, Path]:
     gt.write_text("\n".join(rows) + "\n")
     cov_vals = ",".join(["0.01"] + ["0.0"] * 20)
     cov = tmp_path / "cov.csv"
-    cov.write_text(f"{t[100] + 3},{cov_vals}\n{t[500] - 2},{cov_vals}\n")
+    cov.write_text(
+        f"{t[100] + 3},{cov_vals}\n{t[500] - 2},{cov_vals}\n{t[-1] + 5_000_000},{cov_vals}\n"
+    )
     return gt, cov
 
 
@@ -26,9 +28,10 @@ def test_reference_nodes_and_velocity(tmp_path: Path) -> None:
     gt_path, cov_path = _write_session(tmp_path)
     ref = load_reference(gt_path, cov_path)
     assert not ref.gt.valid[0]
-    assert ref.nodes.gt_index.tolist() == [100, 500]
-    assert ref.nodes.gt_offset_us.tolist() == [-3, 2]
-    assert ref.nodes.cov.shape == (2, 6, 6)
+    assert ref.nodes.gt_index.tolist()[:2] == [100, 500]
+    assert ref.nodes.gt_offset_us.tolist()[:2] == [-3, 2]
+    assert ref.nodes.valid.tolist() == [True, True, False]  # node beyond the GT span
+    assert ref.nodes.cov.shape == (3, 6, 6)
     np.testing.assert_allclose(ref.nodes.cov[:, 0, 0], 0.01)
     tq = ref.gt.t_us[200:800:50]
     v, mask = ref.velocity_w(tq)

@@ -92,10 +92,14 @@ def audit_session(
     row["gps_outage_total_min"] = sum(b - a for a, b in outages) * 1e-6 / 60
     row["gps_outage_longest_s"] = max(((b - a) * 1e-6 for a, b in outages), default=0.0)
 
-    # Stationary periods from wheels (both speeds ~0 for >= 5 s)
+    # Stationary periods (heuristic): the Segway balances itself, so wheels jitter by
+    # up to ~0.08 m/s at rest. Use the forward speed smoothed over ~1 s below 0.05 m/s
+    # for >= 5 s. Phase 3 can refine this with IMU variance.
     w = s.wheels
-    still = (np.abs(w.left) < 0.01) & (np.abs(w.right) < 0.01)
-    stationary = spans_where(w.t_us, still, 5.0)
+    v_fwd = 0.5 * (w.left + w.right)
+    k = max(1, round(1e6 / np.median(np.diff(w.t_us))))
+    v_smooth = np.convolve(v_fwd, np.ones(k) / k, mode="same")
+    stationary = spans_where(w.t_us, np.abs(v_smooth) < 0.05, 5.0)
     row["stationary_n"] = len(stationary)
     row["stationary_total_min"] = sum(b - a for a, b in stationary) * 1e-6 / 60
     row["reverse_frac"] = float(np.mean((w.left + w.right) < -0.05))
@@ -109,19 +113,21 @@ def audit_session(
     row["gt_start_after_sensors_s"] = (tg[0] - t_start) * 1e-6
     row["gt_end_before_sensors_s"] = (t_end - tg[-1]) * 1e-6
     row["gt_gaps_over_1s"] = len(gap_spans(tg, 1.0))
-    tn = ref.nodes.t_us
+    nv = ref.nodes.valid
+    tn = ref.nodes.t_us[nv]
     row["nodes_n"] = len(tn)
+    row["nodes_without_gt"] = int((~nv).sum())
     row["node_dt_p50_s"] = float(np.median(np.diff(tn)) * 1e-6) if len(tn) > 1 else np.nan
     row["node_dt_max_s"] = float(np.max(np.diff(tn)) * 1e-6) if len(tn) > 1 else np.nan
-    node_p: F64 = ref.node_p_w
+    node_p: F64 = ref.node_p_w[nv]
     row["node_spacing_p50_m"] = (
         float(np.median(np.linalg.norm(np.diff(node_p[:, :2], axis=0), axis=1)))
         if len(tn) > 1
         else np.nan
     )
-    row["node_max_offset_ms"] = float(np.max(np.abs(ref.nodes.gt_offset_us)) * 1e-3)
+    row["node_max_offset_ms"] = float(np.max(np.abs(ref.nodes.gt_offset_us[nv])) * 1e-3)
     row["node_pos_std_p50_m"] = float(
-        np.median(np.sqrt(ref.nodes.cov[:, 0, 0] + ref.nodes.cov[:, 1, 1]))
+        np.median(np.sqrt(ref.nodes.cov[nv, 0, 0] + ref.nodes.cov[nv, 1, 1]))
     )
 
     spans = {

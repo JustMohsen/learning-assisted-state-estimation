@@ -22,6 +22,8 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 - **Sensor mounting:** IMU, FOG and GPS antenna positions/orientations from paper Table 4 (IMU and FOG axes aligned with body, FRD). Track width is not published; estimated from data in check V4 and marked estimated.
 - **Graph-node poses:** nearest valid dense ground-truth row at each covariance-file timestamp, as in the official read_ground_truth.py (no exact timestamp matches exist; offsets are milliseconds).
 - **Parquet cache (step 9) deferred:** CSV parsing of a full 87-minute session takes ~0.1 s, so a cache adds complexity without benefit. pyarrow stays installed for later use.
+- **Truncated sessions:** keep 2012-04-29 and 2012-06-15 in the training split as agreed; use only their valid graph nodes and released GT span.
+- **Stationary detection:** heuristic (smoothed wheel speed) for the audit only; refined with IMU variance when bias priors are needed (Phase 3).
 
 ## Steps
 
@@ -34,7 +36,7 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 - [x] 7. Reference: dense poses, graph nodes, derived velocity with masks, separate API
 - [x] 8. Session object + causal event stream + tests (ordering, ties, windows, no reference leakage)
 - [x] 9. Parquet cache keyed by loader version
-- [ ] 10. All-session audit → `reports/phase1_audit/`
+- [x] 10. All-session audit → `reports/phase1_audit/`
 - [ ] 11. Validation checks V1–V5 → `reports/phase1_audit/`
 - [ ] 12. Phase 1 summary; update README status
 
@@ -54,6 +56,9 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 - 2026-11-15 01:31: Step 8 done: session.py (separate load_inputs / load_reference_for / load_diagnostics), events.py (merged causal index with tie priority IMU<FOG<WHEEL<GNSS, half-open windows, payloads in SI/NED). 2012-01-22: ~1.03 M events, index built in 0.02 s.
 - 2026-11-15 01:31: Step 9: evaluated and deferred (see decisions).
 - 2026-11-15 01:31: Step 5 in progress: calibration config and model written from paper Sec. 3-5 and Table 4; track width pending V4.
+- 2026-11-15 01:33: Step 10 done: scripts/audit_nclt.py -> reports/phase1_audit/ (sessions.csv, spans.json, durations_outages.png, sample_intervals.png). 36.3 h total (train 30.8 h, validation 1.6 h, test 3.9 h). No non-monotonic/duplicate timestamps in any stream. GPS num_sats always 0; GPS invalid rows ~0 except 2012-02-18 (1.6%). Natural GPS outages (>5 s) 4-18 min per session, longest 837 s; 2012-04-29 has none and almost no 2D fixes. GT ~148 Hz, starts ~0-1 s after sensors, ends up to 65 s before. Graph nodes every 3.6 s / ~5 m (not 8 m), position std ~8 cm. Wheel gaps >0.2 s occur 2-23 times per session.
+- 2026-11-15 01:33: Finding: 2012-04-29 and 2012-06-15 releases are truncated (43 and 55 min); their covariance files list 365/334 graph nodes beyond the released GT. Fixed by a node validity mask (dense GT row within 50 ms).
+- 2026-11-15 01:33: Finding: the Segway self-balances, so wheels jitter up to ~0.08 m/s at rest; strict zero-speed stationary detection never triggers. Audit now uses 1 s smoothed forward speed < 0.05 m/s for >= 5 s (heuristic): 3-17 stationary periods per session.
 
 ## Summary
 
