@@ -1,0 +1,44 @@
+# Phase 1 Worklog
+
+Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). Started 15 November 2026, partly run autonomously overnight. **Scope: Phase 1 only; do not start Phase 2.**
+
+## Rules for autonomous work
+
+- Read this file first; continue from the first unchecked step.
+- Follow [CONVENTIONS.md](../CONVENTIONS.md). Commit directly to `main`. Run `uv run pre-commit run --all-files` before every push.
+- Commit and push after each completed step, updating this file (tick the step, add a log line).
+- Never commit data. Data goes in `local_data/` (gitignored).
+- If blocked on a decision only the user can make, record it under **Questions for the user**, choose the most conservative reversible option, and continue.
+- When all steps are done (or everything remaining is blocked), write the **Summary** section, commit, push and delete the wake-up cron job.
+
+## Decisions made
+
+- **Frame origin:** convert GPS with the dataset-wide geodetic anchor of the reference frame (from NCLT's official GPS reader). If it cannot be sourced reliably, estimate it from GPS-vs-reference agreement on training days only and mark it as estimated. A session-relative shift, if used, applies equally to GPS and the reference.
+- **Cache format:** Parquet (adds `pyarrow`).
+
+## Steps
+
+- [ ] 1. Split manifest: `configs/data/split.yaml` + pydantic model + tests; add `pyarrow`
+- [ ] 2. Downloader: `src/lase/data/download.py` + `scripts/download_nclt.py` (resumable, SHA-256 recorded in `configs/data/nclt_files.yaml`, selective extraction). Bring-up on 2013-01-10 and one training day; list archive contents.
+- [ ] 3. Full download of all 27 sessions (background), verify checksums, record extracted size
+- [ ] 4. Raw loaders per sensor with schemas and validity flags + synthetic-fixture tests
+- [ ] 5. Calibration research and `configs/data/nclt_calibration.yaml` (origin, frames, lever arms, track width, FOG axis/sign), every value sourced or marked estimated
+- [ ] 6. Conversions: geodesy (exact WGS-84 → NED), FOG unwrap/increments, unit checks + tests
+- [ ] 7. Reference: dense poses, graph nodes, derived velocity with masks, separate API
+- [ ] 8. Session object + causal event stream + tests (ordering, ties, windows, no reference leakage)
+- [ ] 9. Parquet cache keyed by loader version
+- [ ] 10. All-session audit → `reports/phase1_audit/`
+- [ ] 11. Validation checks V1–V5 → `reports/phase1_audit/`
+- [ ] 12. Phase 1 summary; update README status
+
+## Questions for the user
+
+(none yet)
+
+## Log
+
+- 2026-11-15: worklog created; overnight run set up (wake-up cron, caffeinate).
+
+## Summary
+
+(written when Phase 1 completes)
