@@ -156,6 +156,8 @@ Existing detail to build on: [research/nclt-sensors-and-state.md](./research/ncl
 
 **Goal:** realistic synthetic sensor data with **known truth** for every quantity the filter estimates or the network learns.
 
+**Detailed plan (2a and 2b):** [plans/PHASE_2_SIM_EVAL.md](./plans/PHASE_2_SIM_EVAL.md).
+
 **Approach:** take real NCLT reference trajectories, which give realistic motion, and generate sensor readings from them by differentiation and the measurement models. Then inject controlled errors:
 - IMU and FOG biases (constant and drifting), scale errors, white noise;
 - wheel scale error and **slip episodes**;
