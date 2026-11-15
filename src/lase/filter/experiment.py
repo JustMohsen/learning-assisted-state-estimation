@@ -90,16 +90,11 @@ def run_session(
         max_speed_mps=P.data.max_reference_speed_mps,
     )
     row: dict[str, Any] = {"date": date.isoformat(), "mode": mode, **rep.row()}
-    for name, log, dof in (
-        ("wheel", res.wheel, 1),
-        ("gnss", res.gnss, 2),
-        ("nhc", res.nonholonomic, 2),
-    ):
-        if len(log["nis"]):
-            r = nis(
-                log["innovation"].reshape(len(log["nis"]), dof),
-                log["S"].reshape(len(log["nis"]), dof, dof),
-            )
+    for name, log in (("wheel", res.wheel), ("gnss", res.gnss), ("nhc", res.nonholonomic)):
+        n = len(log["nis"])
+        if n:
+            dof = log["innovation"].reshape(n, -1).shape[1]  # measurement dimension from the data
+            r = nis(log["innovation"].reshape(n, dof), log["S"].reshape(n, dof, dof))
             row[f"{name}_nis_mean"] = r.mean
             row[f"{name}_nis_median"] = float(np.median(log["nis"]))
             row[f"{name}_accept"] = float(log["accepted"].mean())

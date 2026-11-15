@@ -92,6 +92,7 @@ History:
 - 2026-11-15 15:25: R4 done: GPS error states (propagation decay, update Jacobian, prior; F = autograd with the state enabled). Simulation, tuned config with 7 Hz GPS when enabled: nominal NEES 19.7 -> 1.9, median 1.81 -> 0.95 m; realistic NEES 9.8 -> 0.7, median 1.32 -> 0.84 m, p95 3.87 -> 1.98 m. 92 unit tests pass.
 - 2026-11-15 15:29: Finding: the reference's roll at graph nodes does not follow the IMU roll motion (FOG-vs-reference residual correlates with roll rate, coefficient 0.17, while FOG and IMU agree to 0.7 deg): a reference limitation for short-window attitude comparisons.
 - 2026-11-15 15:29: R5 done: FOG investigation report; bias model proposal for R7.
+- 2026-11-15 16:01: Bug found and fixed: after R1 made the non-holonomic constraint 1-D, the experiment summary still reshaped its innovations as 2-D, which crashed the first R6 run (no results). The summary now infers the measurement dimension; validation smoke test added for both constraint variants. The stale pre-revision all-training-days diagnostic was stopped (superseded; rerun in R7 with the new code). 2x2 wheel-model comparison (encoder term x vertical constraint) added.
 
 ## Summary
 
