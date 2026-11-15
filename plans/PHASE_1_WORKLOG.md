@@ -16,13 +16,14 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 - **Frame origin:** convert GPS with the dataset-wide geodetic anchor of the reference frame (from NCLT's official GPS reader). If it cannot be sourced reliably, estimate it from GPS-vs-reference agreement on training days only and mark it as estimated. A session-relative shift, if used, applies equally to GPS and the reference.
 - **Cache format:** Parquet (adds `pyarrow`).
 - **Extraction:** extract all 12 archive files (inputs and diagnostics) flat into extracted/<date>/; access control between estimator inputs, diagnostics and reference is enforced in code, not by omitting files.
+- **Validity flags:** invalid = non-monotonic time, non-finite, out-of-range (|f|>60 m/s^2, |w|>10 rad/s, |wheel|>5 m/s) or GPS fix mode < 2. Duplicate timestamps and held GPS positions are informational flags only. Limits are generous physical bounds in a config, not tuning.
 
 ## Steps
 
 - [x] 1. Split manifest: `configs/data/split.yaml` + pydantic model + tests; add `pyarrow`
 - [x] 2. Downloader: `src/lase/data/download.py` + `scripts/download_nclt.py` (resumable, SHA-256 recorded in `configs/data/nclt_files.yaml`, selective extraction). Bring-up on 2013-01-10 and one training day; list archive contents.
 - [ ] 3. Full download of all 27 sessions (background), verify checksums, record extracted size
-- [ ] 4. Raw loaders per sensor with schemas and validity flags + synthetic-fixture tests
+- [x] 4. Raw loaders per sensor with schemas and validity flags + synthetic-fixture tests
 - [ ] 5. Calibration research and `configs/data/nclt_calibration.yaml` (origin, frames, lever arms, track width, FOG axis/sign), every value sourced or marked estimated
 - [ ] 6. Conversions: geodesy (exact WGS-84 → NED), FOG unwrap/increments, unit checks + tests
 - [ ] 7. Reference: dense poses, graph nodes, derived velocity with masks, separate API
@@ -41,6 +42,7 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 - 2026-11-15: worklog created; overnight run set up (wake-up cron, caffeinate).
 - 2026-11-15 01:21: Step 1 done: split manifest (configs/data/split.yaml), SplitManifest model with disjointness check, tests; pyarrow added.
 - 2026-11-15 01:23: Step 2 done: downloader (resumable, trust-on-first-use SHA-256 in configs/data/nclt_files.yaml, flat safe extraction) + scripts/download_nclt.py; bring-up on 2013-01-10 and 2012-01-22 (~12 MB/s). Archives hold 12 files: gps, gps_rtk, gps_rtk_err, ms25, ms25_euler, kvh, wheels, odometry_mu(_100hz), odometry_cov(_100hz), README.txt; all extracted (extraction ~2.7x compressed size). GT starts ~1 s after sensors; covariance graph nodes look ~19 s apart (to audit).
+- 2026-11-15 01:24: Step 4 done: raw loaders (src/lase/data/raw.py) for all 12 files' formats with RowFlag bitmask (non-monotonic, duplicate time, non-finite, out-of-range, GPS no-fix, GPS held) and tests. Real data (2 sessions): all rows valid; GPS mode only 2 (~40%) or 3; num_sats always 0; FOG angle wrapped to [0, 2pi); reverse wheel speeds occur; accel at rest ~(-0.2..-0.4, 0.1, -9.79) m/s^2 so z axis points down.
 
 ## Summary
 
