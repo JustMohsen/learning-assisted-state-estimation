@@ -1,2 +1,0 @@
-# Analytical ESKF baseline (method A). Starting values; tuned on training days in Phase 3.
-name: eskf-baseline

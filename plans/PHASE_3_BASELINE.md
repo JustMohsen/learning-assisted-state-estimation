@@ -1,6 +1,6 @@
 # Phase 3 Plan: Analytical Baseline (Method A)
 
-*Detailed plan for Phase 3 of [DEVELOPMENT_PLAN.md](../DEVELOPMENT_PLAN.md). Written 15 November 2026 during an autonomous run; **all design choices here are proposals for the user's review**. Builds on the Phase 1 data foundation and the Phase 2 simulator and harness.*
+*Detailed plan for Phase 3 of [DEVELOPMENT_PLAN.md](../DEVELOPMENT_PLAN.md). **Status: DRAFT FOR DISCUSSION.** Written 15 November 2026; every design choice here is a proposal to review together before any Phase 3 work on `main`. Builds on the Phase 1 data foundation and the Phase 2 simulator and harness. A prototype exists on branch `phase3-prototype` (not merged); its lessons are in section 7.*
 
 ## 1. Goal and exit criterion
 
@@ -88,3 +88,26 @@ Measure the per-event cost in the Python loop. The baseline needs only forward r
 | Update algebra | Linear-Gaussian case vs batch weighted least squares |
 | Full filter, simulation | Bias convergence to injected values; NEES within chi-square bounds |
 | Full filter, real data | NIS consistency; beats raw GPS; with GPS removed, within the range of NCLT odometry; outage error growth vs the Phase 2 reference points |
+
+## 7. Lessons from the prototype (branch `phase3-prototype`, not merged)
+
+The prototype implemented sections 2–3 and part of section 6. What it showed:
+
+| Topic | Finding | Proposed plan change |
+|---|---|---|
+| Update timing | Applying wheel/GPS updates to the state of the previous IMU sample (up to ~20 ms stale) corrupted the gyro-z bias. The cause is the large, fast lever-arm term: the IMU sits 0.71 m above the axle on a Segway pitching ±20°. Result: **50° heading drift in 300 s on clean data**. | **Exact-time updates:** buffer each measurement until the next IMU sample, split the interval at measurement times, and interpolate IMU (and FOG) values. Costs ≤ 1 IMU interval of latency and uses no future data. |
+| FOG increments | Re-evaluating the FOG angle at a boundary after a new FOG sample had arrived broke telescoping, and the error leaked into the FOG and gyro-z bias estimates | Reuse the boundary value, so increments sum exactly to the total FOG angle change |
+| Transition matrix | First-order shortcuts (approximate right Jacobian; missing bias effect through the midpoint attitude) gave errors of ~5e-7 against autograd | Use the exact right Jacobian and include all bias terms; then F equals autograd to 1e-8 |
+| Verification | The mean equalled the NumPy strapdown to 1e-9. Wheel/GPS H equalled autograd to 1e-10. Sequential updates equalled batch WLS to 1e-10. Monte Carlo covariance ratios were 0.88–1.15 (400 runs). | Keep these as the Phase 3 unit and validation tests |
+| Simulation accuracy (17-min session) | Clean: 2 cm position, 0.1° heading. Matched-noise scenario: **NEES 2.4, 95% coverage 0.94, NIS wheel 1.00, NIS GPS 2.02**, i.e. consistent. Nominal (correlated GPS): 3.7 m RMSE but **NEES 133** (overconfident). | The filter is consistent when its noise model is right. Correlated GPS error needs an explicit decision: a GPS error state, R inflation or decimation, or leaving it to the learned multipliers. |
+| Slip scenario | Without slip handling, heading RMSE rose to 3.8° and the gyro-z bias estimate was corrupted (7e-3 rad/s) | Slip robustness (gating, variance inflation, gyro-bias protection) belongs in the baseline design discussion |
+| Compute | ~0.95 ms per IMU step including updates (B=1, CPU, Python loop): ~4 min per 85-minute session | A forward-only baseline is fine; Phase 4 training needs batching or compilation, so measure early |
+
+### Decisions to make together
+
+1. Wheel speed scale: fixed (1.054 training median), estimated as a slow state, or left to learning.
+2. Correlated GPS error: add a 2-D Gauss–Markov GPS error state, or handle it in R (inflation or decimation).
+3. Slip robustness in the baseline: chi-square gating only, or robust variance inflation and bias protection.
+4. Exact-time update scheme (above): adopt?
+5. Initialisation: reference pose + wheel velocity + zero biases, or stationary bias priors where available.
+6. Tuning method on training days: grid/coordinate search on a few noise scalars, or learned constants (which overlaps with Phase 4's method B).
