@@ -85,6 +85,18 @@
 | 5 | **Outage test design:** injected 30/60/120 s vs natural ~2–14 min | Report both. Consider adding a 300 s injected duration to match the natural ones. |
 | ~~6~~ | ~~Separate noise for GPS mode-2 fixes~~ | **Answered by data:** accuracy is nearly equal (2.94 vs 2.78 m) and modes alternate per fix, so no separate noise is needed |
 
+## 4a. Decisions from the review discussion
+
+### Phase 1 (15 November 2026)
+
+| # | Topic | User decision / outcome |
+|---|---|---|
+| 1 | Wheel speed scale | **Estimate it as a slow state** in the baseline (Phase 3). Initialise each session from the **final estimate of the previous session by date**; the first session (2012-01-08) starts at 1.0. To settle in Phase 3: initial uncertainty (larger for the first session, growing with time since the last run), a stored per-date chain usable by Phase 4, and diagnosis of why the prototype's wheel-scale state drifted to 1.08–1.14. |
+| 2 | Validation volume | **Keep the agreed 22/2/3 split.** |
+| 3 | Headline metric | Deferred to the Phase 3 discussion. |
+| – | GPS gating | Robust gating agreed. |
+| – | Reference trust | Clarified: graph nodes (~5 m apart) come from multi-session LiDAR scan matching + RTK + odometry (mostly independent of our sensors; ~8 cm σ). Dense poses between nodes are interpolated with NCLT's wheel+FOG odometry (our sensor family). Primary scoring stays at graph nodes. Proposed: add node-only drift (RPE) so short-window metrics are also LiDAR/RTK-anchored. |
+
 ## 5. Phase 3: analytical baseline (complete; review after Phases 1–2)
 
 **What exists:**
