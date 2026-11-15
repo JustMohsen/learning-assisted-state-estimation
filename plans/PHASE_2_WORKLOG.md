@@ -43,7 +43,7 @@ Execution log for [PHASE_2_SIM_EVAL.md](./PHASE_2_SIM_EVAL.md). Run rules: [AUTO
 - [x] 11. Simulator validation across several sessions and scenarios (S1–S3 + realism comparison: simulated vs real residual statistics) + tests
 - [x] 12. Standard evaluation entry point (`evaluate_estimate`: nodes/dense metrics, RPE, injected and natural outage curves, consistency) + tests
 - [x] 13. Harness edge cases (empty or short estimates, NaN fields, truncated sessions, no outage candidates) + tests
-- [ ] 14. Update the Phase 2 report; write `plans/REVIEW_PHASES.md` (Phases 1–2 decisions, questions, Phase 3 draft decisions)
+- [x] 14. Update the Phase 2 report; write `plans/REVIEW_PHASES.md` (Phases 1–2 decisions, questions, Phase 3 draft decisions)
 
 ## Questions for the user
 
@@ -70,32 +70,23 @@ Execution log for [PHASE_2_SIM_EVAL.md](./PHASE_2_SIM_EVAL.md). Run rules: [AUTO
 - 2026-11-15 02:39: Step 12 done: evaluation/report.py (evaluate_estimate, EvaluationReport.row, natural_outage_spans) + tests; baseline report extended with natural outages.
 - 2026-11-15 02:39: Step 13 done: edge cases fixed and tested (empty estimate crashed compute_errors and RPE; all-NaN percentile warnings in outage curves; empty summaries); tests run warning-free with -W error::RuntimeWarning. 63 unit tests pass.
 - 2026-11-15 02:39: Finding: 84 natural GPS outages (> 5 s) across sessions, median 122 s, p90 218 s, max 837 s, much longer than the injected 30-120 s windows. GPS-hold is already 46 m off at their start (last fixes before going indoors are multipath-corrupted). Oracle-anchored odometry: 0.26 / 2.6 / 4.6 m median at 10 / 120 / 300 s.
+- 2026-11-15 02:41: Step 14 done: Phase 2 report hardening section, plans/REVIEW_PHASES.md (Phases 1-2 decisions, findings, consolidated questions with recommendations, Phase 3 draft decisions), README status.
 
 ## Summary
 
-**Phase 2 is complete** (15 November 2026, overnight). All 9 steps are done.
+**Phase 2 is complete and hardened** (15 November 2026, overnight). All 14 steps are done (9 planned + 5 hardening).
 
 **Built:**
-- `lase.sim`: truth trajectory, sensor models, scenarios, `simulate_session`, a validation-only strapdown integrator and checks S1–S3.
-- `lase.evaluation`: estimate format, causal association, metrics and RPE, outage planning and curves, NEES/NIS, plots, baselines.
-- Scripts: `scripts/evaluate_baselines.py`.
+- `lase.sim`: truth trajectory, sensor models with episodic GPS errors, 6 scenarios including the fitted `realistic`, a validation-only strapdown integrator, error-model fitting and realism comparison.
+- `lase.evaluation`: estimate format, causal association, metrics, RPE, outage planning and curves (injected + natural), NEES/NIS, plots, baselines, the `evaluate_estimate` entry point.
+- Scripts: `evaluate_baselines.py`, `fit_sim_errors.py`, `validate_sim_realism.py`.
 
-**Tests:** 60 unit tests (CI) and 22 validation tests (Phase 1 + Phase 2), all passing.
+**Tests:** 63 unit tests (CI) and 29 validation tests, all passing.
 
-**Key results** ([reports/phase2_eval/README.md](../reports/phase2_eval/README.md)):
-- The simulator validates: second-order strapdown convergence, injected values recovered by the Phase 1 checks, and correct noise statistics.
-- The harness matches `evo` exactly.
-- Baseline reference points:
-  - raw GPS: median 3.7–4.5 m, but RMSE in the hundreds of metres because of extreme outliers;
-  - NCLT odometry: 54–111 m RMSE without GPS;
-  - oracle-anchored wheels + FOG during injected outages: 1.0 m (60 s) and 2.0 m (120 s) median.
+**Key results:** see [reports/phase2_eval/README.md](../reports/phase2_eval/README.md) and the consolidated [REVIEW_PHASES.md](./REVIEW_PHASES.md).
 
-**Most consequential decisions:**
-- the simulator emits real-data types;
-- simulated sensors use real timestamps;
-- error magnitudes are plausible defaults, not identified values;
-- association is causal with 200 ms staleness;
-- outage windows are placed only where GPS was healthy;
-- oracle-anchored odometry is labelled diagnostic-only.
+**Answered questions:**
+- GPS mode-2 noise: not needed.
+- Simulator magnitudes: now fitted (`realistic`).
 
-**Needs the user:** see *Questions for the user* (none blocking).
+**Still needs the user:** see REVIEW_PHASES.md, section 4.

@@ -47,7 +47,7 @@ Execution log for [PHASE_1_DATA_FOUNDATION.md](./PHASE_1_DATA_FOUNDATION.md). St
 
 - **Wheel scale in the baseline/pilot:** the scope fixes wheel scale in the pilot, but data shows 1.044-1.085 (drifting over months). Options: (a) estimate wheel scale as a slow analytical state in the Phase 3 baseline (recommended: cheap, physically motivated, fair to all methods); (b) fixed training-median 1.054; (c) keep 1.0 and let learning absorb it. This affects baseline fairness and the scope's pilot definition.
 - **Validation data volume:** validation is 97 min, ~80 of them from 2013-02-23 (2013-01-10 is 17 min). The split stays as agreed unless you want to revisit it; if checkpoint selection proves noisy, cross-validation over training days is an alternative.
-- **Consumer GPS mode-2 fixes** (20-53% of fixes) may deserve different noise than mode-3: a Phase 3 tuning detail, noted for awareness.
+- ~~**Consumer GPS mode-2 fixes** may deserve different noise than mode-3.~~ **Answered in Phase 2 (step 10):** accuracy is nearly equal (2.94 vs 2.78 m) and modes alternate almost every fix; no separate noise needed.
 
 ## Log
 

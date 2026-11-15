@@ -2,7 +2,7 @@
 
 A physics-based Kalman filter for ground-robot navigation, with a small causal neural network (GRU) that adapts the filter's normally hand-tuned parts to the current situation. The network is trained end to end through the filter.
 
-**Current phase:** Phases 1 (data foundation) and 2 (simulator + evaluation harness) complete ([Phase 1 report](./reports/phase1_audit/README.md), [Phase 2 report](./reports/phase2_eval/README.md)). Next: Phase 3, analytical baseline. No estimator, trained model or results yet.
+**Current phase:** Phases 1 (data foundation) and 2 (simulator + evaluation harness) complete ([Phase 1 report](./reports/phase1_audit/README.md), [Phase 2 report](./reports/phase2_eval/README.md)). Phase 3 (analytical baseline) has a **draft plan for discussion** ([review notes](./plans/REVIEW_PHASES.md)). No estimator, trained model or results yet.
 
 ## In one minute
 

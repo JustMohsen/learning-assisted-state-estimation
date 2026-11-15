@@ -5,8 +5,10 @@
 Reproduce:
 
 ```bash
-uv run pytest tests/validation                 # simulator S1-S3, harness E1-E2 (and Phase 1 checks)
-uv run python scripts/evaluate_baselines.py    # this folder's CSVs, JSONs and figures
+uv run pytest tests/validation                       # simulator S1-S3 (3 sessions), realism, harness E1-E2, Phase 1 checks
+uv run python scripts/evaluate_baselines.py          # baseline metrics, injected and natural outage curves, figures
+uv run python scripts/fit_sim_errors.py              # sim_fit.json: error models fitted on training days
+uv run python scripts/validate_sim_realism.py realistic   # sim_realism_realistic.csv: real vs simulated statistics
 ```
 
 ## Simulator (`lase.sim`)
@@ -61,3 +63,38 @@ GPS outages (232 injected windows; `outage_growth.png`, `outage_curves.json`):
 - **Extreme GPS outliers flagged as valid:** 1.4% of samples are over 100 m off and 0.4% over 1 km (up to 5.9 km), in 15 of 27 sessions. This explains the raw-GPS RMSE. **Robust gating is mandatory.** Compare medians and p95 as well as RMSE.
 - **Dead-reckoning target:** wheels plus FOG from a perfect start drift about 1 m per minute (median). A well-tuned baseline should come close to this during outages, and the learned components aim to improve on it.
 - **Without GPS, global error accumulates:** NCLT's own odometry reaches tens of metres over a session. The value of GPS is bounding that drift; the value of the filter is bridging gaps and rejecting outliers.
+
+## Hardening (after the initial Phase 2 completion)
+
+### Error models fitted to real data (`sim_fit.json`, 22 training days)
+
+| Quantity | Fitted value | Note |
+|---|---|---|
+| GPS inlier error | 1.44 m "white" + 2.53 m Gauss–Markov, τ = 55 s | Close to the earlier defaults (1.5 / 2.5 / 60 s) |
+| GPS errors > 10 m | Episodic: ~22–27 runs/h, median 2.2 s, p90 47 s; only 32% isolated fixes | Modelled as multipath episodes |
+| Gross GPS errors > 50 m | ~3.4 episodes/h, median 14 s, offset median 81 m, p90 1 km, max 5 km | Modelled as gross episodes |
+| GPS fix mode | Mode 2 for 44% of fixes, alternating almost every fix; accuracy 2.94 vs 2.78 m | No separate mode-2 noise needed |
+| Held GPS fixes | 0.7–1% | |
+| Wheel mean-speed residual | Robust std 0.035 m/s (includes reference error) | Upper bound on noise |
+| Slip-like wheel excursions | Strongly session-dependent: median 0.019 per moving minute, pooled 0.09 | |
+| IMU at rest | Dominated by self-balancing motion; quietest axes bound noise at 0.002 m/s² / 0.0025 rad/s | Not identifiable; nominal values kept |
+
+The new `realistic` scenario uses these values. Two new simulator mechanisms support it: episodic GPS errors and a separate yaw low-pass cutoff.
+
+### Realism check (`sim_realism_realistic.csv`; six training sessions, simulated twins vs real, ratio of session medians)
+
+| Matches well (0.9–1.1×) | Mismatch | Cause |
+|---|---|---|
+| GPS median, inlier σ, time > 10 m, gross-episode rate, held fixes, fix-mode fraction, wheel residual and excursions, yaw-rate content, forward acceleration (0.87×) | > 10 m runs 1.7×; lateral/vertical acceleration 1.8×/2.4×; roll rate 0.18× | Smoothing position and attitude separately breaks the physical coupling: the Segway rolls about its wheel contact points, and the 0.71 m IMU lever arm amplifies spurious roll content. Position/roll/pitch at 1 Hz with yaw at 5 Hz is the best compromise found. |
+
+### Natural GPS outages (`natural_outage_curves.json`, `natural_outage_growth.png`)
+
+84 natural outages over 5 s inside the reference span: median 122 s, p90 218 s, max 837 s. These are **longer than the injected windows**, and GPS is already degraded when they start. Holding the last fix is 46 m off at outage start.
+
+| Time since natural outage start | 10 s | 60 s | 120 s | 300 s |
+|---|---|---|---|---|
+| Oracle-anchored NCLT odometry, median | 0.26 m | 1.4 m | 2.6 m | 4.6 m |
+
+### Standard entry point
+
+`lase.evaluation.report.evaluate_estimate` produces node/dense metrics, RPE, injected- and natural-outage curves, and NEES for any `NavEstimate`. Edge cases (empty estimates, NaN fields, empty windows) are tested and raise no warnings.
