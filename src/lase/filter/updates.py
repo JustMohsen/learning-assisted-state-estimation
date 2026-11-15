@@ -161,20 +161,41 @@ def update_nonholonomic(
     cfg: NonholonomicConfig,
     learned: HeadOutputs | None = None,
 ) -> tuple[NavState, Tensor, UpdateDiagnostics]:
-    """Soft pseudo-measurement: the axle does not slide sideways (lateral body velocity ~ 0).
+    """Soft pseudo-measurements on the axle velocity.
 
-    Lateral is along the axle (body y), so it is unaffected by pitch. The optional vertical
-    term (body z velocity ~ 0) is wrong when the Segway pitches (body z velocity = v sin(pitch))
-    and is off by default. ``learned.nhc_var_mult`` scales the lateral variance (B/C methods).
+    Lateral (always): velocity along the axle (body y) ~ 0; unaffected by pitch.
+    Vertical (``cfg.vertical_mode``): "body" constrains body-z velocity (biased by
+    v sin(pitch) when the Segway pitches); "level" constrains world-vertical velocity
+    (pitch-independent; road slopes fall within its sigma); "off" omits it.
+    ``learned.nhc_var_mult`` scales the lateral variance (B/C methods).
     """
     C = state.C_wb
-    v_b = (C.transpose(-1, -2) @ state.v_w[..., None])[..., 0]
-    rows = [1, 2] if cfg.vertical_enabled else [1]
-    h = axle_velocity_body(state, omega_b, params)[:, rows]
-    B, d = P.shape[0], len(rows)
-    H = torch.zeros(B, d, N_ERR, dtype=P.dtype)
-    H[:, :, V_] = C.transpose(-1, -2)[:, rows, :]
-    H[:, :, TH] = skew(v_b)[:, rows, :]
+    Ct = C.transpose(-1, -2)
+    v_b = (Ct @ state.v_w[..., None])[..., 0]
+    B = P.shape[0]
+    lever = torch.linalg.cross(omega_b, params.l_imu.expand_as(omega_b))
+    h_rows = [axle_velocity_body(state, omega_b, params)[:, 1]]
+    H_rows = []
+    Hl = torch.zeros(B, N_ERR, dtype=P.dtype)
+    Hl[:, V_] = Ct[:, 1, :]
+    Hl[:, TH] = skew(v_b)[:, 1, :]
+    H_rows.append(Hl)
+    if cfg.vertical_mode == "body":
+        h_rows.append(axle_velocity_body(state, omega_b, params)[:, 2])
+        Hv = torch.zeros(B, N_ERR, dtype=P.dtype)
+        Hv[:, V_] = Ct[:, 2, :]
+        Hv[:, TH] = skew(v_b)[:, 2, :]
+        H_rows.append(Hv)
+    elif cfg.vertical_mode == "level":
+        # world-down axle velocity: v_D - (C (omega x l))_D; d/dtheta = (C [omega x l]x)_D
+        h_rows.append(axle_velocity_world(state, omega_b, params)[:, 2])
+        Hv = torch.zeros(B, N_ERR, dtype=P.dtype)
+        Hv[:, 5] = 1.0
+        Hv[:, TH] = (C @ skew(lever))[:, 2, :]
+        H_rows.append(Hv)
+    h = torch.stack(h_rows, dim=-1)
+    H = torch.stack(H_rows, dim=1)
+    d = h.shape[1]
     var = [cfg.sigma_lateral_mps**2, cfg.sigma_vertical_mps**2][:d]
     R = torch.diag(torch.tensor(var, dtype=P.dtype)).expand(B, d, d).clone()
     if learned is not None:

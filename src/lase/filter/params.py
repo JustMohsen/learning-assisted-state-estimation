@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import torch
 from torch import Tensor
@@ -58,7 +59,9 @@ class NonholonomicConfig(Config):
 
     enabled: bool = False
     sigma_lateral_mps: float = 0.1
-    vertical_enabled: bool = False  # body-z velocity ~ 0 is wrong under pitch (v sin(pitch))
+    # Vertical part: "off"; "body" = body-z axle velocity ~ 0 (biased by v sin(pitch));
+    # "level" = world-vertical axle velocity ~ 0 (pitch-independent; slopes within sigma).
+    vertical_mode: Literal["off", "body", "level"] = "off"
     sigma_vertical_mps: float = 0.1
     gate_prob: float = 0.999
 

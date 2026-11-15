@@ -31,7 +31,9 @@ def main() -> int:
             update={
                 "name": name,
                 "wheel": base.wheel.model_copy(update={"encoder_pitch_coef_m": enc}),
-                "nonholonomic": base.nonholonomic.model_copy(update={"vertical_enabled": vert}),
+                "nonholonomic": base.nonholonomic.model_copy(
+                    update={"vertical_mode": "body" if vert else "off"}
+                ),
             }
         )
         for d in dates:

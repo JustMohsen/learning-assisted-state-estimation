@@ -188,7 +188,7 @@ def test_nonholonomic_jacobian_matches_autograd() -> None:
     np.testing.assert_allclose(H.numpy(), J.numpy(), atol=1e-10)
     P = torch.eye(N_ERR, dtype=D)[None]
     s, _, d = update_nonholonomic(
-        x0, P, omega, params, NonholonomicConfig(enabled=True, vertical_enabled=True)
+        x0, P, omega, params, NonholonomicConfig(enabled=True, vertical_mode="body")
     )
     assert bool(d.accepted[0])
     after = axle_velocity_body(s, omega, params)[0, 1:3].abs().sum()
@@ -212,3 +212,23 @@ def test_nonholonomic_lateral_only_is_one_dof() -> None:
     )
     _, _, d2 = update_nonholonomic(x0, P, omega, params, NonholonomicConfig(enabled=True), big)
     assert float(d2.S[0, 0, 0]) > float(d.S[0, 0, 0])  # learned multiplier inflates the variance
+
+
+def test_nonholonomic_level_vertical_jacobian_and_pitch_independence() -> None:
+    from lase.filter.params import NonholonomicConfig
+    from lase.filter.updates import axle_velocity_world, update_nonholonomic
+
+    params = FilterParams.build(load_calibration(), FilterConfig())
+    x0 = _state()
+    omega = torch.tensor([[0.05, -0.2, 0.3]], dtype=D)
+    J = _H_numeric(lambda x: axle_velocity_world(x, omega, params)[:, 2:3], x0)
+    from lase.filter.so3 import skew
+
+    lever = torch.linalg.cross(omega, params.l_imu[None])
+    H = torch.zeros(N_ERR, dtype=D)
+    H[5] = 1.0
+    H[6:9] = (x0.C_wb @ skew(lever))[0, 2, :]
+    np.testing.assert_allclose(H.numpy(), J[0].numpy(), atol=1e-10)
+    cfg = NonholonomicConfig(enabled=True, vertical_mode="level")
+    _, _, d = update_nonholonomic(x0, torch.eye(N_ERR, dtype=D)[None], omega, params, cfg)
+    assert d.innovation.shape == (1, 2)

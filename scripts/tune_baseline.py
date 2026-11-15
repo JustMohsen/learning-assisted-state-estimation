@@ -55,15 +55,16 @@ def configs(stage: str = "1") -> dict[str, FilterConfig]:
             update={"name": c.name + "_earthOff", "earth_rotation": False}
         )
         return out
-    if stage == "r7b":  # revision: lateral-constraint sigma x encoder term, on the r7a winner
+    if stage == "r7b":  # revision: lateral sigma x vertical mode (off / level), on the r7a winner
         win = load_filter_config(_arg(2, "baseline"))
-        for nhc, enc in itertools.product((0.05, 0.1, 0.2), (0.0, 0.24)):
-            name = f"r7b_nhc{nhc:g}_enc{enc:g}"
+        for nhc, vert in itertools.product((0.05, 0.1, 0.2), ("off", "level")):
+            name = f"r7b_nhc{nhc:g}_vert{vert}"
             out[name] = win.model_copy(
                 update={
                     "name": name,
-                    "nonholonomic": win.nonholonomic.model_copy(update={"sigma_lateral_mps": nhc}),
-                    "wheel": win.wheel.model_copy(update={"encoder_pitch_coef_m": enc}),
+                    "nonholonomic": win.nonholonomic.model_copy(
+                        update={"sigma_lateral_mps": nhc, "vertical_mode": vert}
+                    ),
                 }
             )
         return out
