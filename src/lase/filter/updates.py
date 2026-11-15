@@ -253,7 +253,7 @@ def update_nonholonomic(
     var = [cfg.sigma_lateral_mps**2, cfg.sigma_vertical_mps**2][:d]
     R = torch.diag(torch.tensor(var, dtype=P.dtype)).expand(B, d, d).clone()
     if learned is not None:
-        R[:, 0, 0] = R[:, 0, 0] * learned.nhc_var_mult[:, 0]
+        R[:, 0, 0] = R[:, 0, 0].clone() * learned.nhc_var_mult[:, 0]  # clone: keep autograd-safe
     return kalman_update(
         state, P, -h, H, R, gate_threshold(cfg.gate_prob, d), consider=params.consider_mask
     )

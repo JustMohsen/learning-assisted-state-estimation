@@ -126,6 +126,7 @@ training:                            # method B: learned noise and constants (Ph
     burn_in_s: 20.0                  # s run without gradient from A's cached state/covariance so the state adapts to B's values (user decision) [design]
     loss_window_s: 10.0              # s window with backpropagation and loss (user decision) [design]
     carry_state: true                # continue chunks chronologically, state carried with gradients detached [design]
+    grad_through_burn_in: true       # gradient also flows through the burn-in (loss still only on the loss window): with a no-gradient burn-in the GPS-sigma gradient missed most of its effect (pilot check: -0.009 vs 0.29 full) [measured, pilot]
 
   optimizer:                         # D6
     name: adamw                      # optimiser on the deviation parameters [design]
@@ -172,3 +173,12 @@ training:                            # method B: learned noise and constants (Ph
     round2_fog_bias_rw_factors: [0.333, 1.0, 3.0]  # round 2: factors on the best round-1 FOG bias random walk [design]
     round3_enabled: true             # round 3: gyro and accelerometer bias random walks, one at a time [design]
     round3_bias_rw_factors: [0.333, 3.0]  # round 3: factors on each anchor [design]
+
+  pilot:                             # quick method-B pilot (learns GPS, wheel and lateral sigma only); scripts/phase4_pilot.py
+    n_sessions: 9                    # training days used, spread evenly over the training dates (one process each) [design]
+    snapshot_every_s: 30.0           # s spacing of A's cached chunk starts (chunk = burn-in + loss window) [design]
+    steps: 40                        # optimiser steps [design; from the pilot timing]
+    lr: 0.05                         # peak learning rate (few steps, so larger than training.optimizer.lr) [design]
+    warmup_steps: 5                  # linear warm-up, then cosine decay to training.optimizer.lr_final [design]
+    chunks_per_step: 18              # chunks per optimiser step (gradient averaged) [design]
+    workers: 9                       # parallel processes, one chunk each (10 cores) [design]

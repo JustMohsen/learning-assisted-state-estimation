@@ -60,6 +60,7 @@ class TrainingWindowParams(Config):
     burn_in_s: float = 20.0
     loss_window_s: float = 10.0
     carry_state: bool = True
+    grad_through_burn_in: bool = True
 
 
 class OptimizerParams(Config):
@@ -123,6 +124,18 @@ class SlowGridParams(Config):
     round3_bias_rw_factors: tuple[float, ...] = (0.333, 3.0)
 
 
+class PilotParams(Config):
+    """Phase 4 pilot: quick method-B run on a few training days."""
+
+    n_sessions: int = 9
+    snapshot_every_s: float = 30.0
+    steps: int = 40
+    lr: float = 0.05
+    warmup_steps: int = 5
+    chunks_per_step: int = 18
+    workers: int = 9
+
+
 class TrainingParams(Config):
     """Method B training (Phase 4, plans/PHASE_4_TRAINING.md)."""
 
@@ -137,6 +150,7 @@ class TrainingParams(Config):
     loss: TrainingLossParams = TrainingLossParams()
     anchor_sigma: AnchorSigmaParams = AnchorSigmaParams()
     slow_grid: SlowGridParams = SlowGridParams()
+    pilot: PilotParams = PilotParams()
 
 
 class Parameters(Config):
