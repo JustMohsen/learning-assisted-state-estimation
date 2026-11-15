@@ -130,8 +130,28 @@ def test_nonholonomic_jacobian_matches_autograd() -> None:
     H[:, 6:9] = skew(v_b[None])[0, 1:3]
     np.testing.assert_allclose(H.numpy(), J.numpy(), atol=1e-10)
     P = torch.eye(N_ERR, dtype=D)[None]
-    s, _, d = update_nonholonomic(x0, P, omega, params, NonholonomicConfig(enabled=True))
+    s, _, d = update_nonholonomic(
+        x0, P, omega, params, NonholonomicConfig(enabled=True, vertical_enabled=True)
+    )
     assert bool(d.accepted[0])
     after = axle_velocity_body(s, omega, params)[0, 1:3].abs().sum()
     before = axle_velocity_body(x0, omega, params)[0, 1:3].abs().sum()
     assert after < before
+
+
+def test_nonholonomic_lateral_only_is_one_dof() -> None:
+    from lase.filter.params import NonholonomicConfig
+    from lase.filter.updates import update_nonholonomic
+
+    params = FilterParams.build(load_calibration(), FilterConfig())
+    x0 = _state()
+    omega = torch.zeros(1, 3, dtype=D)
+    P = torch.eye(N_ERR, dtype=D)[None]
+    _, _, d = update_nonholonomic(x0, P, omega, params, NonholonomicConfig(enabled=True))
+    assert d.innovation.shape == (1, 1)
+    m = HeadOutputs.neutral(1)
+    big = HeadOutputs(
+        m.bias_drift, m.wheel_residual, m.wheel_var_mult, m.gnss_var_mult, m.nhc_var_mult * 100
+    )
+    _, _, d2 = update_nonholonomic(x0, P, omega, params, NonholonomicConfig(enabled=True), big)
+    assert float(d2.S[0, 0, 0]) > float(d.S[0, 0, 0])  # learned multiplier inflates the variance

@@ -237,7 +237,9 @@ def run_filter(
                 learned(t, SensorId.WHEEL),
             )
             if cfg.nonholonomic.enabled:
-                st, Pm, nd = update_nonholonomic(st, Pm, omega, params, cfg.nonholonomic)
+                st, Pm, nd = update_nonholonomic(
+                    st, Pm, omega, params, cfg.nonholonomic, learned(t, SensorId.WHEEL)
+                )
                 nhc_log.t_us.append(t)
                 nhc_log.innovation.append(nd.innovation[0].numpy())
                 nhc_log.S.append(nd.S[0].numpy())

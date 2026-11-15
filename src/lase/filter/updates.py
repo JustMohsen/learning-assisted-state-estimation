@@ -127,19 +127,27 @@ def update_nonholonomic(
     omega_b: Tensor,
     params: FilterParams,
     cfg: NonholonomicConfig,
+    learned: HeadOutputs | None = None,
 ) -> tuple[NavState, Tensor, UpdateDiagnostics]:
-    """Pseudo-measurement: axle lateral and vertical body velocity are zero (2-dof, soft)."""
+    """Soft pseudo-measurement: the axle does not slide sideways (lateral body velocity ~ 0).
+
+    Lateral is along the axle (body y), so it is unaffected by pitch. The optional vertical
+    term (body z velocity ~ 0) is wrong when the Segway pitches (body z velocity = v sin(pitch))
+    and is off by default. ``learned.nhc_var_mult`` scales the lateral variance (B/C methods).
+    """
     C = state.C_wb
     v_b = (C.transpose(-1, -2) @ state.v_w[..., None])[..., 0]
-    h = axle_velocity_body(state, omega_b, params)[:, 1:3]
-    B = P.shape[0]
-    H = torch.zeros(B, 2, N_ERR, dtype=P.dtype)
-    H[:, :, V_] = C.transpose(-1, -2)[:, 1:3, :]  # rows y, z of C^T
-    H[:, :, TH] = skew(v_b)[:, 1:3, :]
-    R = torch.diag(
-        torch.tensor([cfg.sigma_lateral_mps**2, cfg.sigma_vertical_mps**2], dtype=P.dtype)
-    ).expand(B, 2, 2)
-    return kalman_update(state, P, -h, H, R, gate_threshold(cfg.gate_prob, 2))
+    rows = [1, 2] if cfg.vertical_enabled else [1]
+    h = axle_velocity_body(state, omega_b, params)[:, rows]
+    B, d = P.shape[0], len(rows)
+    H = torch.zeros(B, d, N_ERR, dtype=P.dtype)
+    H[:, :, V_] = C.transpose(-1, -2)[:, rows, :]
+    H[:, :, TH] = skew(v_b)[:, rows, :]
+    var = [cfg.sigma_lateral_mps**2, cfg.sigma_vertical_mps**2][:d]
+    R = torch.diag(torch.tensor(var, dtype=P.dtype)).expand(B, d, d).clone()
+    if learned is not None:
+        R[:, 0, 0] = R[:, 0, 0] * learned.nhc_var_mult[:, 0]
+    return kalman_update(state, P, -h, H, R, gate_threshold(cfg.gate_prob, d))
 
 
 def gnss_prediction(state: NavState, params: FilterParams) -> Tensor:

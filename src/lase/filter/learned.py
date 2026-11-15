@@ -20,6 +20,7 @@ class HeadOutputs:
     wheel_residual: Tensor  # (B, 1) m/s
     wheel_var_mult: Tensor  # (B, 1)
     gnss_var_mult: Tensor  # (B, 2) north, east
+    nhc_var_mult: Tensor  # (B, 1) lateral no-slip constraint
 
     @classmethod
     def neutral(cls, batch: int, dtype: torch.dtype = torch.float64) -> HeadOutputs:
@@ -29,4 +30,5 @@ class HeadOutputs:
             wheel_residual=torch.zeros(batch, 1, dtype=dtype),
             wheel_var_mult=torch.ones(batch, 1, dtype=dtype),
             gnss_var_mult=torch.ones(batch, 2, dtype=dtype),
+            nhc_var_mult=torch.ones(batch, 1, dtype=dtype),
         )

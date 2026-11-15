@@ -125,6 +125,7 @@ update_gnss(state, P, measurement, params, learned) -> (state, P, UpdateDiagnost
 | `wheel_residual` | `(B, 1)` | m/s | 0 | scaled `tanh` |
 | `wheel_var_mult` | `(B, 1)` | - | 1 | bounded positive, default [0.25, 25] |
 | `gnss_var_mult` | `(B, 2)` | - (North, East) | 1 | bounded positive, default [0.25, 25] |
+| `nhc_var_mult` | `(B, 1)` | - (lateral no-slip constraint) | 1 | bounded positive, default [0.25, 25] |
 
 Method B (learned constants) produces the same `HeadOutputs` from learnable constant parameters. The filter cannot tell the difference, which is what makes A/B/C directly comparable.
 

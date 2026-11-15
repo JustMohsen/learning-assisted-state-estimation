@@ -57,6 +57,7 @@ class NonholonomicConfig(Config):
 
     enabled: bool = False
     sigma_lateral_mps: float = 0.1
+    vertical_enabled: bool = False  # body-z velocity ~ 0 is wrong under pitch (v sin(pitch))
     sigma_vertical_mps: float = 0.1
     gate_prob: float = 0.999
 

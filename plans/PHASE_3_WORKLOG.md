@@ -38,6 +38,7 @@ History:
 - **Earth-rate compensation: implemented but OFF by default (reverses the previous entry).** On six training days (not the tuning ones) compensating made heading worse in every session (no GPS: 8.3 vs 6.4 deg RMSE over 20 min; with GPS 1.45 vs 1.28 deg), and on the validation days too. The observed FOG drift against the reference is positive (+2 to +4 deg per 10 min), opposite in sign to an uncompensated Earth rate (-1.7 deg per 10 min), so the released NCLT FOG data appears to be Earth-rate compensated already. The capability stays (FilterConfig.earth_rotation, SimConfig.earth_rotation), default off in both. Open question for the user: confirm from the NCLT/KVH documentation.
 - **FOG-bias prior stays at the datasheet value (1e-5 rad/s):** wider priors (5e-5, 1.5e-4) were worse on training days (heading 1.6/1.8 vs 1.37 deg; outage-end error 3.4/3.8 vs 2.0 m).
 - **Parameters file (R0, user request):** configs/parameters.yaml holds every tunable value of the estimator, data handling and evaluation, each commented (what, units, source: tuned/datasheet/measured/design), loaded by lase.parameters.load_parameters with experiment overrides from configs/experiments/ (deep merge; unknown keys rejected). Former hard-coded values moved in: GPS recovery rejection count, FOG extrapolation limit/baseline, start-up offset, evaluation staleness, dense rate, RPE intervals, outage planning and curve settings, reference node tolerance and velocity window. configs/filter/baseline.yaml removed (its values are in parameters.yaml). tests/unit/test_parameters.py enforces completeness and comments; CONVENTIONS rule added. Analysis-only thresholds in one-off Phase 1/2 diagnostics remain documented keyword arguments.
+- **Non-holonomic constraint in baseline A, lateral only (user decision; R1):** lateral = along the axle, pitch-independent. The vertical term (body-z velocity ~ 0) is wrong under pitch (v sin(pitch), ~0.07 m/s typical) and is now optional, off by default. New learned output nhc_var_mult (CONVENTIONS 6.3): B learns the constraint's noise as a constant, C learns its trust; lateral skids are handled like forward slip (scope stage 3 rewritten accordingly).
 
 ## Steps
 
@@ -55,7 +56,7 @@ History:
 ### Revision after the user's review (15 November 2026)
 
 - [x] R0. Single commented parameters file (`configs/parameters.yaml`) for every tunable value; move existing magic numbers into it; CONVENTIONS rule "every decided value is a named, commented parameter"
-- [ ] R1. Non-holonomic constraint in A, **lateral only**; scope/plan updated: B learns its noise, C learns its trust, lateral slip handled like forward slip
+- [x] R1. Non-holonomic constraint in A, **lateral only**; scope/plan updated: B learns its noise, C learns its trust, lateral slip handled like forward slip
 - [ ] R2. Wheel model: encoder senses wheel rotation relative to the chassis, `reported speed = s * V_axle,perp + R_w * q_gyro_y` (R_w a parameter, ~0.2 m measured); pitch-independent axle speed; vertical constraint dropped or loosened
 - [ ] R3. GPS re-acquisition: require N mutually consistent fixes after an outage (parameters)
 - [ ] R4. GPS error states (2-D Gauss-Markov, fitted values) for correlated GPS error
@@ -81,6 +82,7 @@ History:
 - 2026-11-15 05:34: Remaining FOG drift of ~+3 deg per 10 min (~9e-5 rad/s) looks like a genuine FOG bias, ~10x the datasheet-based prior (1e-5 rad/s), so the filter cannot learn it even with GPS. Testing wider FOG-bias priors (1e-5 / 5e-5 / 1.5e-4) on training days.
 - 2026-11-15 06:00: Step 10 done: validation-day evaluation (scripts/evaluate_baseline.py -> reports/phase3_baseline/validation_*), tuned config on all sim scenarios (scripts/sim_baseline.py), Phase 3 report, REVIEW_PHASES section 5, README status. 2013-02-23 p95 65 m traced to GPS re-acquisition after a natural outage: grown uncertainty let ~67 m-wrong fixes through, then good fixes were rejected until the 300 s recovery.
 - 2026-11-15 15:04: R0 done: configs/parameters.yaml, lase/parameters.py, configs/experiments/ (README, no_nhc.yaml), wiring through runner, experiment, evaluation and data loading; 88 unit tests pass.
+- 2026-11-15 15:06: R1 done: lateral-only constraint (vertical optional), nhc_var_mult in HeadOutputs, scope / development plan / conventions / review notes updated; 89 unit tests pass.
 
 ## Summary
 

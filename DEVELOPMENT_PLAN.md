@@ -241,7 +241,7 @@ Existing detail to build on: [research/estimator-mathematics.md](./research/esti
 - Batching strategy chosen from the Phase 3 compute check.
 - Losses, starting with normalised MSE on position, heading and velocity.
 - Checkpointing, validation replays, early stopping, run provenance.
-- Method B: learn constant noise and bias parameters, with no network.
+- Method B: learn constant noise and bias parameters, with no network. This includes the lateral no-slip constraint's noise level, so its trust and covariance are learned rather than guessed.
 
 **Validation:**
 - `torch.autograd.gradcheck` and finite differences on short float64 chunks.
@@ -283,7 +283,7 @@ Existing detail to build on: [research/estimator-mathematics.md](./research/esti
 
 These follow the scope's investigation order:
 1. Process-noise adaptation.
-2. Soft lateral no-slip constraint with learned trust.
+2. Learned trust in the lateral no-slip constraint (the constraint itself is in baseline A), with lateral-skid handling like forward slip.
 3. FOG bias and noise adaptation.
 4. Calibration terms: gyro and accelerometer scale factors (wheel scale is part of the baseline by user decision).
 

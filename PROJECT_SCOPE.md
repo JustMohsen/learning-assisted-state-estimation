@@ -54,6 +54,7 @@ The physics and the filter mathematics stay. A small neural network adjusts spec
 | Wheel residual (1) | Correction to the predicted forward wheel speed (m/s) | Added to the wheel measurement prediction. Captures predictable slip/model mismatch. |
 | GNSS noise multipliers (2) | How much to trust GPS North and East right now | Scale a calibrated baseline measurement variance. |
 | Wheel noise multiplier (1) | How much to trust the wheel speed right now | Scales a calibrated baseline measurement variance. |
+| Lateral-constraint noise multiplier (1) | How much to trust "the Segway does not slide sideways" right now (lower during lateral skids) | Scales the baseline variance of the lateral no-slip pseudo-measurement. |
 | Process noise (later stage) | Structured adaptation of Q | Scales selected baseline process-noise terms. |
 
 **Architecture** (purple = learned, blue = analytical filter; rates are logged rates from one session):
@@ -292,7 +293,7 @@ Platform: Python/PyTorch on a laptop (Apple M5, 16 GB). Filter in float64 on CPU
 | Method | What it isolates |
 |---|---|
 | **A. Hand-tuned ESKF** | Classical baseline with the same sensors and models |
-| **B. Learned-constant ESKF** | Same training pipeline, but learning fixed noise/bias parameters with no network. The fair baseline: separates "context-dependence helps" from "training tunes the filter better than a human". |
+| **B. Learned-constant ESKF** | Same training pipeline, but learning fixed noise/bias parameters (including the lateral-constraint noise) with no network. The fair baseline: separates "context-dependence helps" from "training tunes the filter better than a human". |
 | **C. Learned-context ESKF (ours)** | GRU-adapted biases, wheel residual and noise |
 | **D. Learned-gain filter** (KalmanNet-style) | Network predicts the gain directly, on the **same inputs and protocol** |
 | **E. Published NCLT KalmanNet** (Song et al., 2024) | Reproduced under its own 1 Hz protocol, reported separately because inputs and rate differ |
@@ -341,7 +342,7 @@ flowchart LR
 0. **Analytical baseline** (A) validated and fairly tuned; learned constants (B).
 1. **Pilot:** bias drift, wheel residual and GNSS/wheel noise heads (C), isolated and combined, against A, B and D.
 2. **Process-noise adaptation.**
-3. **Soft lateral no-slip constraint:** a "doesn't move sideways" pseudo-measurement with learned trust. Likely valuable during GPS outages.
+3. **Learned trust in the lateral no-slip constraint.** The constraint itself is part of baseline A (user decision, Phase 3 review): a soft "doesn't slide sideways" pseudo-measurement along the axle. B learns its noise level as a constant; C learns a context-dependent trust multiplier. Lateral skids are handled like forward wheel slip: variance inflation for moderate inconsistency, rejection when severe, and a suspected-skid diagnostic with hysteresis.
 4. **FOG bias/noise adaptation.**
 5. **Calibration terms:** gyro/accelerometer scale factors where identifiable. (Wheel scale moved into the baseline: estimated as a slow state, initialised from the previous session's final estimate by date; user decision, Phase 1 review.)
 

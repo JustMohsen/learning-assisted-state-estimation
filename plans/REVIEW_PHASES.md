@@ -109,6 +109,21 @@
 
 **Phase 2: accepted by the user as complete (15 November 2026).**
 
+### Phase 3 review (15 November 2026, in progress)
+
+| # | Topic | User decision / outcome |
+|---|---|---|
+| 7 | Non-holonomic constraint | **In baseline A.** Implemented lateral-only, because the vertical part is wrong under pitch; vertical is optional and off. Its noise is a learned constant in B and a learned trust multiplier in C (`nhc_var_mult`). Lateral skids are handled like forward slip. |
+| 8 | Wheel scale | Test the chained slow state (previous session's estimate; first 1.0) against fixed 1.054 on the corrected wheel model; if it doesn't beat fixed, adjust it (slower, minimal updates) until it does |
+| 9 | GPS re-acquisition | Require several mutually consistent fixes after an outage; the count and consistency threshold are parameters |
+| 10 | Overconfidence | Proposed: GPS error states for the time-correlated GPS error; a realistic FOG bias random walk; context-dependent effects left to learning |
+| 11 | FOG drift | Investigate (done so far: confirmed in the FOG via GPS course; bias −23…+37°/h, varying within sessions) |
+| 12 | Compute | Batching/compilation, noted for Phase 4 planning |
+| – | Parameters | **Every decided value is a named, commented parameter** in `configs/parameters.yaml` (user request; done, R0) |
+| – | Wheel/pitch model | Encoder measures wheel rotation relative to the chassis: `w_enc = V/R + w_body_pitch`, so reported speed = `s·V + R_w·q_gyro_y` (data: coefficient 0.17–0.24 m ≈ wheel radius) |
+
+Revision steps R0–R7 are tracked in [PHASE_3_WORKLOG.md](./PHASE_3_WORKLOG.md).
+
 ## 5. Phase 3: analytical baseline (complete; under review)
 
 **What exists:**

@@ -38,8 +38,9 @@ filter:
 
   nonholonomic:                      # soft pseudo-measurement: axle does not slide sideways/vertically
     enabled: true                    # on in baseline A (user decision, Phase 3 review)
-    sigma_lateral_mps: 0.1           # m/s allowed lateral axle velocity [design]
-    sigma_vertical_mps: 0.1          # m/s allowed vertical body velocity [design; to be removed/loosened, R2]
+    sigma_lateral_mps: 0.1           # m/s allowed lateral axle velocity (along the axle; pitch-independent) [design; retune R7]
+    vertical_enabled: false          # body-z velocity ~ 0: wrong under pitch (v*sin(pitch) ~ 0.07 m/s typ.) [measured, R1]
+    sigma_vertical_mps: 0.1          # m/s, only used if vertical_enabled [design]
     gate_prob: 0.999                 # chi-square acceptance probability [design]
 
   gnss:                              # horizontal GPS position update
