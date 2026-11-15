@@ -11,13 +11,14 @@ Execution log for [PHASE_2_SIM_EVAL.md](./PHASE_2_SIM_EVAL.md). Run rules: [AUTO
 - **Gravity:** WGS-84 normal gravity with free-air correction at the NCLT origin (9.8029 m/s^2), in lase.geometry.constants; shared by simulator and filter.
 - **Record builders:** raw loaders refactored into make_imu/make_fog/make_wheels/make_gps (LOADER_VERSION 2) so simulated records get identical validity flags.
 - **No scripts/simulate.py:** simulations take ~0.2 s per session, so they are generated in memory where needed instead of being stored.
+- **Validation-only strapdown integrator (sim/strapdown.py, NumPy):** an independent second implementation used only to validate the simulator and, later, to cross-check the PyTorch filter's propagation. It is not part of the estimator (one-implementation principle preserved for the filter).
 
 ## Steps
 
 - [x] 1. Truth trajectory: resample, zero-phase low-pass, splines; exact derivatives and body rates
 - [x] 2. Sensor models: IMU (lever arm), FOG (released convention), wheels (scale, track, slip), GPS (Gauss–Markov, bursts, outliers, outages, held)
 - [x] 3. Scenarios (`configs/sim/`), `SimTruth`, outputs as `SensorStreams` + `Reference`; `scripts/simulate.py`
-- [ ] 4. Simulator validation S1–S3 (+ tests)
+- [x] 4. Simulator validation S1–S3 (+ tests)
 - [ ] 5. Evaluation core: `NavEstimate`, causal association, accuracy metrics (nodes + dense)
 - [ ] 6. Outage injection, outage error-growth curves, relative pose error
 - [ ] 7. Consistency statistics (NEES/NIS, coverage), plots
@@ -32,6 +33,8 @@ Execution log for [PHASE_2_SIM_EVAL.md](./PHASE_2_SIM_EVAL.md). Run rules: [AUTO
 - 2026-11-15 01:55: Step 1 done: sim/trajectory.py (truth splines, exact derivatives, body rates, FOG body-z angle antiderivative).
 - 2026-11-15 01:55: Step 2 done: sim/sensors.py (IMU with lever-arm acceleration, FOG released convention, wheels with scale/track/slip, GPS with Gauss-Markov, bursts, outliers, outages, held, mode Markov chain).
 - 2026-11-15 01:55: Step 3 done: sim/config.py + 5 scenarios, sim/simulate.py (SimRun = SensorStreams + Reference from truth + SimTruth); 2013-01-10 simulates in ~0.2 s per scenario; 8 synthetic-circle unit tests (exact lever-arm specific force, wheel kinematics, FOG convention, outages, random-walk statistics).
+- 2026-11-15 01:57: Step 4 done (2012-01-22, nominal): S1 clean strapdown error 8.4 mm per 10 s at 47 Hz, 0.53 mm at 4x rate, convergence ratio 16.06 (second order). S2 Phase 1 cross-checks recover injected values: GPS median 3.41 m (injected 3.41), wheel scale 1.0546 (1.054), raw track 0.5905 m (0.590), FOG/IMU scale -0.996/+0.996 with sub-ms lag. S3 noise std 0.0201/0.00299 vs 0.02/0.003. tests/validation/test_sim.py (3 pass).
+- 2026-11-15 01:57: Finding: heading-increment scale is ~0.996 even in simulation with exact sensors, because Euler yaw rate differs from body z rate when the Segway pitches (up to ~20 deg); the real-data 0.998 is therefore consistent with unit scale.
 
 ## Summary
 
