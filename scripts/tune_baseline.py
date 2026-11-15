@@ -28,6 +28,40 @@ def configs(stage: str = "1") -> dict[str, FilterConfig]:
     """
     base = load_filter_config("baseline")
     out = {}
+    if stage == "r7a":  # revision: GPS handling x FOG bias model (on configs/parameters.yaml)
+        gps = {
+            "gpsW5_1hz": {"error_state": False},
+            "gpsGM_7hz": {"error_state": True, "min_interval_s": 0.0},
+            "gpsGM_1hz": {"error_state": True, "min_interval_s": 1.0},
+        }
+        fog = {
+            "fogOld": (1e-5, 1e-7),
+            "fog1e-4_rw1e-6": (1e-4, 1e-6),
+            "fog1e-4_rw2e-6": (1e-4, 2e-6),
+        }
+        for (gn, gu), (fn, (fp, frw)) in itertools.product(gps.items(), fog.items()):
+            name = f"r7a_{gn}_{fn}"
+            out[name] = base.model_copy(
+                update={
+                    "name": name,
+                    "gnss": base.gnss.model_copy(update=gu),
+                    "prior": base.prior.model_copy(update={"fog_bias_radps": fp}),
+                    "noise": base.noise.model_copy(update={"fog_bias_rw": frw}),
+                }
+            )
+        return out
+    if stage == "r7b":  # revision: lateral-constraint sigma x encoder term, on the r7a winner
+        win = load_filter_config(_arg(2, "baseline"))
+        for nhc, enc in itertools.product((0.05, 0.1, 0.2), (0.0, 0.24)):
+            name = f"r7b_nhc{nhc:g}_enc{enc:g}"
+            out[name] = win.model_copy(
+                update={
+                    "name": name,
+                    "nonholonomic": win.nonholonomic.model_copy(update={"sigma_lateral_mps": nhc}),
+                    "wheel": win.wheel.model_copy(update={"encoder_pitch_coef_m": enc}),
+                }
+            )
+        return out
     if stage == "3":  # GPS recovery rule variants on the stage-2 winner (set below)
         best = _cfg(base, "s3", 5.0, 1.0, float(_arg(2, "0.15")), float(_arg(3, "0.05")))
         for after in (90.0, 300.0, 1e9):
@@ -90,6 +124,7 @@ def main() -> int:
     out = repo_root() / "reports" / "phase3_baseline"
     out.mkdir(parents=True, exist_ok=True)
     suffix = "" if stage == "1" else f"_stage{stage}"
+    # r7 stages: also save which session subset was used
     df.to_csv(out / f"tuning_runs{suffix}.csv", index=False, float_format="%.5g")
     keys = [
         "nodes_pos_median_m",

@@ -87,6 +87,20 @@ class GnssUpdateConfig(Config):
     error_white_sigma_m: float = 1.44  # remaining white noise when error_state is on (Phase 2 fit)
 
 
+class WheelScaleChainConfig(Config):
+    """Carry the wheel-scale estimate from one session to the next (by date).
+
+    Session 1 starts at ``first_value`` with ``first_sigma``; later sessions start at the
+    previous session's final estimate with sigma = sqrt(final^2 + floor^2 + (growth * days)^2).
+    """
+
+    enabled: bool = False
+    first_value: float = 1.0
+    first_sigma: float = 0.05
+    sigma_floor: float = 0.005
+    sigma_growth_per_day: float = 0.0005
+
+
 class FogHandlingConfig(Config):
     """Causal FOG angle interpolation/extrapolation at interval boundaries."""
 
@@ -109,6 +123,7 @@ class FilterConfig(Config):
     wheel: WheelUpdateConfig = WheelUpdateConfig()
     nonholonomic: NonholonomicConfig = NonholonomicConfig()
     gnss: GnssUpdateConfig = GnssUpdateConfig()
+    wheel_scale_chain: WheelScaleChainConfig = WheelScaleChainConfig()
     fog_handling: FogHandlingConfig = FogHandlingConfig()
     init: InitConfig = InitConfig()
     use_fog: bool = True

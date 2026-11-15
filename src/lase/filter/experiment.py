@@ -108,12 +108,50 @@ def run_session(
     row["final_wheel_scale"] = (
         float(res.biases["wheel_scale"][-1]) if len(res.biases["wheel_scale"]) else np.nan
     )
+    row["final_wheel_scale_sigma"] = float(np.sqrt(res.final_P[0, 16, 16]))
     row["minutes"] = (t_end - ic.t_us) / 60e6
     row["wall_s"] = res.wall_time_s
     row["us_per_step"] = 1e6 * res.wall_time_s / max(res.n_imu_steps, 1)
     if return_details:
         return row, rep, res.estimate, spans, natural
     return row
+
+
+def run_chain(
+    dates: Sequence[dt.date],
+    cfg: FilterConfig,
+    mode: Mode = "gps",
+    max_minutes: float | None = None,
+    params: Parameters | None = None,
+) -> list[dict[str, Any]]:
+    """Run sessions in date order, carrying the wheel-scale estimate (``cfg.wheel_scale_chain``)."""
+    ch = cfg.wheel_scale_chain
+    value, sigma, prev = ch.first_value, ch.first_sigma, None
+    rows = []
+    for d in sorted(dates):
+        if prev is not None:
+            days = (d - prev).days
+            sigma = float(
+                np.sqrt(sigma**2 + ch.sigma_floor**2 + (ch.sigma_growth_per_day * days) ** 2)
+            )
+        c = cfg.model_copy(
+            update={
+                "wheel": cfg.wheel.model_copy(update={"speed_scale": value}),
+                "prior": cfg.prior.model_copy(update={"wheel_scale": sigma}),
+            }
+        )
+        row = run_session(d, c, mode, max_minutes, params=params)
+        row["init_wheel_scale"], row["init_wheel_scale_sigma"] = value, sigma
+        rows.append(row)
+        value, sigma, prev = row["final_wheel_scale"], row["final_wheel_scale_sigma"], d
+    return rows
+
+
+def _chain_worker(args: tuple[Any, ...]) -> list[dict[str, Any]]:
+    import torch
+
+    torch.set_num_threads(1)
+    return run_chain(*args)
 
 
 def _worker(args: tuple[Any, ...]) -> Any:
