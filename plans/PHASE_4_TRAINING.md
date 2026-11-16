@@ -250,3 +250,5 @@ The pilot (`scripts/phase4_pilot.py`, `src/lase/training/`) took shortcuts to ge
 | O7 | Anchor penalty scaling | Penalty divided by the number of training chunks (prior on the whole training set) | Confirm |
 | O8 | Pilot data and schedule | 9 training days, chunk starts every 30 s, 40 steps × 18 chunks, lr 0.05 | Full training protocol (D6) |
 | O9 | Unit-test runtime | `tests/unit/test_training_loop.py` takes ~85 s | Shorten the simulated segments |
+
+**Pilot result (15 November 2026; [report](../reports/phase4_pilot/README.md)):** the machinery works end to end, but B pilot (GPS 3.64 m, wheel 0.064 m/s, lateral 0.086 m/s) is worse than A on the clean validation day (position median 5.38 vs 4.41 m, p95 10.6 vs 6.96 m, 120 s outage 10.7 vs 6.1 m, NEES 105 vs 45). Cause: short chunks warm-started from A's covariance reward trusting the measurements more; the long-horizon cost of that overconfidence is invisible. Next steps are listed in the report (carried-state streams, longer windows, full-replay selection, innovation NLL, stronger anchor).
