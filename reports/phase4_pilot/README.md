@@ -1,6 +1,6 @@
 # Phase 4 pilot: method B (3 learned noise levels) vs baseline A
 
-*15 November 2026. Code: `scripts/phase4_pilot.py`, `src/lase/training/`. Baseline: tag `baseline-a-pilot` (f357fea). Plan: [plans/PHASE_4_TRAINING.md](../../plans/PHASE_4_TRAINING.md) section 7.*
+*15 November 2026. Learnings and status: [LEARNINGS.md](LEARNINGS.md). Code: `scripts/phase4_pilot.py`, `src/lase/training/`. Baseline: tag `baseline-a-pilot` (f357fea). Plan: [plans/PHASE_4_TRAINING.md](../../plans/PHASE_4_TRAINING.md) section 7.*
 
 ## Setup
 
