@@ -45,13 +45,13 @@ An error-state Kalman filter in PyTorch (float64, batch-first; `src/lase/filter/
 
 | Scenario | Position median / p95 | Heading RMSE | NEES (ideal 2) |
 |---|---|---|---|
-| clean | 0.33 / 0.99 m | 0.21° | 1.4 |
-| nominal (correlated GPS) | 1.15 / 3.15 m | 0.62° | 16 |
-| slip | 1.15 / 3.72 m | 0.42° | 12.5 |
-| gps_degraded | 1.98 / 5.38 m | 1.63° | 25.5 |
-| realistic (fitted) | 1.30 / 2.81 m | 0.38° | 11.2 |
+| clean | 0.36 / 1.26 m | 0.19° | 1.2 |
+| nominal (correlated GPS) | 1.78 / 4.63 m | 0.89° | 21.3 |
+| slip | 1.86 / 3.23 m | 0.70° | 13.6 |
+| gps_degraded | 2.27 / 5.20 m | 1.87° | 18.9 |
+| realistic (fitted) | 1.69 / 3.36 m | 0.82° | 10.5 |
 
-The tuned GPS settings (5 m, 1 Hz) trade a little clean-data accuracy for robustness to correlated and episodic GPS errors. With realistic errors the filter is still overconfident (NEES 11–25), because the time-correlated GPS error is not modelled.
+The tuned GPS settings (5 m, 1 Hz) trade a little clean-data accuracy for robustness to correlated and episodic GPS errors. With realistic errors the filter is still overconfident (NEES 10–21), because the time-correlated GPS error is not modelled.
 
 ### 3.2 Tuning on training days (`tuning_*.csv`; original tuning, before the review revisions)
 
