@@ -26,7 +26,7 @@ from lase.filter.learned import HeadOutputs
 from lase.filter.params import FilterConfig, FilterParams
 from lase.filter.runner import initial_condition_from_reference, initial_state
 from lase.parameters import Parameters
-from lase.training.loop import LoopBook, Snapshot, run_segment
+from lase.training.loop import LoopBook, SegmentResult, Snapshot, run_segment
 
 D = torch.float64
 LEARNED = ("gnss_sigma", "wheel_sigma", "lateral_sigma")
@@ -130,7 +130,7 @@ def chunk_loss(
     burn-in (the loss is still only on the loss window). ``burn_delta`` (tests only)
     fixes the burn-in values independently of ``delta``.
     """
-    w, lp = p.training.windows, p.training.loss
+    w = p.training.windows
     t_loss = snap.t_us + int(w.burn_in_s * 1e6)
     t_end = t_loss + int(w.loss_window_s * 1e6)
     head = learned_head(delta)
@@ -146,6 +146,12 @@ def chunk_loss(
         t_grad_us=snap.t_us if full else t_loss,
         t_out_us=t_loss,
     )
+    return task_loss(sess, res, p)
+
+
+def task_loss(sess: Session, res: SegmentResult, p: Parameters) -> tuple[Tensor, int]:
+    """Mean Huber task loss of a segment's outputs against the dense reference."""
+    lp = p.training.loss
     if not res.out_t_us:
         return torch.zeros((), dtype=D), 0
     tq = np.asarray(res.out_t_us, dtype=np.int64)
@@ -195,4 +201,5 @@ __all__ = [
     "learned_head",
     "load_session",
     "session_start",
+    "task_loss",
 ]

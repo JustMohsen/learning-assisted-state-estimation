@@ -182,3 +182,14 @@ training:                            # method B: learned noise and constants (Ph
     warmup_steps: 5                  # linear warm-up, then cosine decay to training.optimizer.lr_final [design]
     chunks_per_step: 18              # chunks per optimiser step (gradient averaged) [design]
     workers: 9                       # parallel processes, one chunk each (10 cores) [design]
+
+  pilot_c:                           # Phase 5 pilot (method C): GRU sets per-step GPS, wheel and lateral variance multipliers; scripts/phase5_pilot.py. Reuses pilot sessions, cache and windows
+    hidden: 32                       # GRU hidden size (one layer) [design]
+    mult_bound: 4.0                  # multipliers bounded to [1/4, 4] (sigma x0.5..2); neutral start = baseline A [design]
+    grid_hz: 10.0                    # Hz feature grid; the filter uses the latest grid output [design]
+    gru_warmup_s: 30.0               # s of features before each chunk to warm the GRU state (no filter cost) [design]
+    steps: 120                       # optimiser steps (~11 s per chunk, 9 in parallel: ~25 min) [design]
+    lr: 3.0e-3                       # peak learning rate (Adam), then cosine decay to training.optimizer.lr_final [design]
+    warmup_steps: 3                  # linear warm-up steps [design]
+    chunks_per_step: 9               # one chunk per pilot session per step [design]
+    seed: 0                          # network initialisation seed [design]

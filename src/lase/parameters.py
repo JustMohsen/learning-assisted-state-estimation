@@ -136,6 +136,20 @@ class PilotParams(Config):
     workers: int = 9
 
 
+class PilotCParams(Config):
+    """Phase 5 pilot: small causal GRU setting GPS, wheel and lateral noise multipliers."""
+
+    hidden: int = 32
+    mult_bound: float = 4.0
+    grid_hz: float = 10.0
+    gru_warmup_s: float = 30.0
+    steps: int = 120
+    lr: float = 3.0e-3
+    warmup_steps: int = 3
+    chunks_per_step: int = 9
+    seed: int = 0
+
+
 class TrainingParams(Config):
     """Method B training (Phase 4, plans/PHASE_4_TRAINING.md)."""
 
@@ -151,6 +165,7 @@ class TrainingParams(Config):
     anchor_sigma: AnchorSigmaParams = AnchorSigmaParams()
     slow_grid: SlowGridParams = SlowGridParams()
     pilot: PilotParams = PilotParams()
+    pilot_c: PilotCParams = PilotCParams()
 
 
 class Parameters(Config):
