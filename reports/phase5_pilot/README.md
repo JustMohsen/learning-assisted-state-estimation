@@ -32,6 +32,15 @@ Consistency (GPS mode, 2013-01-10): wheel NIS 0.39 / 2.28 / 1.33; GPS NIS 3.4 / 
 - **Possible context effect on 2013-02-23:** heading 2.13° vs 2.77° (A) in outages mode and 1.84° vs 2.24° in GPS mode, the day with the GPS failure. A constant multiplier made B worse there (2.83°), so the difference is not explained by trusting the measurements more. This is one day and a partially trained network: a lead to check, not a result.
 - The training objective's bias (B pilot, L4) still applies: C cannot beat A until training sees long horizons.
 
+## Learnings
+
+1. **The Phase 4 machinery carried over directly.** The training loop, A snapshots, loss and evaluation path were reused unchanged; C took about 40 min to build and verify. The `learned_fn` / `HeadOutputs` interface is the right seam between filter and network.
+2. **Under the same objective, C drifts the same way as B.** The network first learned a near-uniform shift towards trusting the measurements (the short-horizon bias, Phase 4 learnings L4); context-dependence came second and stayed small. Fixing the objective (long horizons, full-replay selection) comes before judging context.
+3. **Partial training confounds C vs B.** C moved less far than B, so it is closer to A for that reason alone. A fair comparison needs a matched-constant control or equal training progress.
+4. **A lead worth following:** better heading on the GPS-failure day (2013-02-23), where a constant multiplier (B) made heading worse.
+5. **Robustness:** one optimiser step stalled for 25 min. Worker futures need timeouts (skip a slow chunk rather than wait).
+6. **Evaluation hook:** `run_session` should take a `learned_fn` (or a network) instead of being patched (C3).
+
 ## To disentangle (next)
 
 1. **Matched-constant control:** evaluate B with C's median multipliers as constants (δ = ½ ln m: GPS −0.12, wheel −0.41, lateral −0.41). If C ≈ that control on 2013-01-10 but better on 2013-02-23, context is doing something. Cost: one validation run (~12 min).

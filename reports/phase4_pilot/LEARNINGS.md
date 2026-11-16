@@ -1,6 +1,6 @@
 # Phase 4 pilot: learnings and where we stand
 
-*15 November 2026. Companion to the pilot results ([README.md](README.md)) and the plan ([plans/PHASE_4_TRAINING.md](../../plans/PHASE_4_TRAINING.md)).*
+*15 November 2026. Companion to the pilot results ([README.md](README.md)) and the plan ([plans/PHASE_4_TRAINING.md](../../plans/PHASE_4_TRAINING.md)). Follow-up: the Phase 5 pilot (method C, GRU) on the same machinery, [reports/phase5_pilot/README.md](../phase5_pilot/README.md).*
 
 ## 1. Summary
 

@@ -257,6 +257,8 @@ Existing detail to build on: [research/estimator-mathematics.md](./research/esti
 
 **Goal:** answer the central question: does context-dependent adaptation beat the best fixed settings?
 
+**Status: pilot only (15 November 2026); no detailed plan yet.** Pilot C (small GRU setting GPS, wheel and lateral noise multipliers, trained like pilot B) lands between A and B: better than B, worse than A on the clean validation day, with a possible context effect on the GPS-failure day. [Pilot report](./reports/phase5_pilot/README.md).
+
 **Parts:**
 - Causal input features, shared GRU and heads, bounded outputs with neutral initialisation.
 - Heads added **one at a time**: noise multipliers, bias drift, wheel residual. Each is evaluated alone, then combined.
