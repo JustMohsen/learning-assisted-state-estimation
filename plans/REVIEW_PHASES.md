@@ -140,10 +140,13 @@ Revision steps R0–R7 are tracked in [PHASE_3_WORKLOG.md](./PHASE_3_WORKLOG.md)
 - Tuned on training days only (25 configurations, 156 runs) and scored on the validation days.
 - Full report: [reports/phase3_baseline/README.md](../reports/phase3_baseline/README.md).
 
-**Headline (validation days, all sensors):**
-- position median 4.7–5.3 m, heading 1.2°, velocity 0.15–0.18 m/s;
-- p95 8.5 m on one day, but **65 m on 2013-02-23** (a GPS re-acquisition failure, open problem 1);
-- during injected outages, error grows about 5 m in 120 s, comparable to NCLT's own wheel+FOG odometry started from a perfect pose.
+**Headline (validation days, all sensors; frozen pilot baseline, tag `baseline-a-pilot`):**
+- position median 4.0–4.3 m, heading 1.4° / 2.2°, velocity 0.14–0.17 m/s;
+- p95 6.3 m on 2013-01-10, but **66 m on 2013-02-23** (a GPS re-acquisition failure, open problem 1);
+- position NEES 46 / 263 (ideal 3): still overconfident (R8 pending);
+- during injected outages, median error grows from 4.0 m to 6.1 m over 120 s, less than NCLT's own wheel+FOG odometry started from a perfect pose (4.4 m).
+
+*The baseline before the review revisions had a 4.7–5.3 m median; those numbers are in the git history.*
 
 **Important things that changed while building it** (details in the report, section 4):
 1. **Updates applied at their exact timestamps.** Without this, the 0.71 m lever arm on a pitching Segway caused 50° heading drift.

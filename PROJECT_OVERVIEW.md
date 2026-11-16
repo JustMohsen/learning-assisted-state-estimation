@@ -129,4 +129,4 @@ Cameras and vision; LiDAR or RTK GPS as inputs; maps and loop closure; replacing
 Scope agreed.
 - Phases 1–2 (data, simulator, evaluation harness) are complete and accepted.
 - Phase 3 (analytical baseline filter) is complete and under review.
-- No learned model yet.
+- Phase 4 (differentiable training, method B) is in progress: the training machinery works, and a first pilot B (3 learned noise levels) was worse than A ([pilot report](./reports/phase4_pilot/LEARNINGS.md)). No network yet.

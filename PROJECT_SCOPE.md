@@ -403,6 +403,6 @@ These are expectations, not results:
 Scope agreed on 14 November 2026.
 - Phases 1 (data foundation) and 2 (simulator + evaluation harness) are complete and accepted (15 November 2026).
 - Phase 3 (analytical baseline) is complete and under review.
-- No learned model or Phase 4+ work yet.
+- Phase 4 (differentiable training, method B) is in progress: the training machinery works, and a first pilot B (3 learned noise levels) was worse than A ([pilot report](./reports/phase4_pilot/LEARNINGS.md)). No network (method C) yet.
 
 Decisions from the reviews are in [plans/REVIEW_PHASES.md](./plans/REVIEW_PHASES.md).

@@ -199,7 +199,7 @@ Existing detail to build on: [research/nclt-sensors-and-state.md](./research/ncl
 
 **Goal:** a correct, consistent, fairly tuned error-state Kalman filter using IMU, FOG, wheels and GPS. Everything later depends on this phase.
 
-**Detailed plan:** [plans/PHASE_3_BASELINE.md](./plans/PHASE_3_BASELINE.md). **Status: complete, under review**; [report](./reports/phase3_baseline/README.md). Wheel scale is a slow state initialised from the previous session (user decision).
+**Detailed plan:** [plans/PHASE_3_BASELINE.md](./plans/PHASE_3_BASELINE.md). **Status: complete, under review**; [report](./reports/phase3_baseline/README.md). Wheel scale is fixed per session from a date trend and carried as a consider state (user decision, R6). Frozen baseline for the Phase 4 pilot: tag `baseline-a-pilot`.
 
 **Parts:**
 - Propagation: IMU and FOG fusion, midpoint integration, quaternion update, covariance prediction, Q discretisation.
@@ -236,7 +236,7 @@ Existing detail to build on: [research/estimator-mathematics.md](./research/esti
 
 **Goal:** prove that training through the filter works, before any network is involved.
 
-**Detailed plan:** [plans/PHASE_4_TRAINING.md](./plans/PHASE_4_TRAINING.md). **Status: planned (15 November 2026); implementation not started.** Training parameters: `training` section of `configs/parameters.yaml`.
+**Detailed plan:** [plans/PHASE_4_TRAINING.md](./plans/PHASE_4_TRAINING.md). **Status: in progress.** Pilot done (15 November 2026): training machinery verified, pilot B (3 learned noise levels) worse than A ([pilot report](./reports/phase4_pilot/LEARNINGS.md)). Training parameters: `training` section of `configs/parameters.yaml`.
 
 **Parts:**
 - Truncated backpropagation over chunks, carrying state, P and (later) GRU memory across boundaries.
